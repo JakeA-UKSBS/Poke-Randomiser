@@ -169,6 +169,9 @@ select { background: var(--panel-2); border: 1px solid var(--line); border-radiu
 .curtain { min-height: 50vh; display: grid; place-content: center; text-align: center; gap: 16px; }
 .curtain h2 { color: var(--gold); }
 .err { color: var(--bad); font-size: 13px; min-height: 1em; }
+.netlost { background: var(--bad); color: #fff; padding: 8px 16px; font-weight: 600; text-align: center; }
+.roomcode { font-family: var(--font-display); font-size: clamp(34px, 9vw, 52px); color: var(--gold); letter-spacing: .12em; }
+.online input { background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 9px 10px; }
 .strip { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: grid; gap: 8px; }
 .strip-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
 .mini { display: grid; justify-items: center; gap: 3px; text-align: center; padding: 6px 4px; border-radius: 8px; background: var(--panel-2); min-width: 0; }
@@ -183,8 +186,10 @@ select { background: var(--panel-2); border: 1px solid var(--line); border-radiu
 </style>
 
 <div id="scorebar"></div>
+<div id="netlost" class="netlost" role="alert" hidden></div>
 <main class="wrap" id="app"></main>
 
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js" async></script>
 <script src="engine.js"></script>
 <script src="sprites.js"></script>
 <script>
@@ -242,14 +247,85 @@ function renderScore(extra = '') {
   $score.innerHTML = `<div class="score"><span class="side">${esc(a.name)}</span><span class="mid">${S.wins[0]} – ${S.wins[1]}<small>${FORMATS[S.format].short}${extra ? ' · ' + extra : ''}</small></span><span class="side r">${esc(b.name)}</span></div>`;
 }
 
+// ---------- Online (PeerJS) ----------
+// Lockstep: both browsers run the same seeded battle; only draft results, picks and move choices cross the wire.
+const NET = {conn: null, peer: null, inbox: [], waiters: [], closed: false};
+const USE_BC = new URLSearchParams(location.search).get('transport') === 'bc'; // local two-tab testing
+const makeCode = () => Array.from({length: 5}, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
+function netAttach(conn) {
+  NET.conn = conn; NET.inbox = []; NET.waiters = []; NET.closed = false;
+  conn.on('data', msg => {
+    const w = NET.waiters.findIndex(x => x.type === msg.type);
+    if (w >= 0) NET.waiters.splice(w, 1)[0].res(msg.data); else NET.inbox.push(msg);
+  });
+  conn.on('close', () => {
+    if (NET.closed) return; NET.closed = true;
+    const n = S ? S.players[1 - S.me].name : 'Your friend';
+    document.getElementById('netlost').hidden = false;
+    document.getElementById('netlost').textContent = `Connection to ${n} lost. Start a new room from the home screen to keep playing.`;
+  });
+}
+const netSend = (type, data) => NET.conn && NET.conn.send({type, data});
+function netWait(type) {
+  const k = NET.inbox.findIndex(m => m.type === type);
+  if (k >= 0) return Promise.resolve(NET.inbox.splice(k, 1)[0].data);
+  return new Promise(res => NET.waiters.push({type, res}));
+}
+function netClose() {
+  NET.closed = true;
+  try { NET.conn && NET.conn.close(); } catch {}
+  try { NET.peer && NET.peer.destroy(); } catch {}
+  NET.conn = null; NET.peer = null;
+  document.getElementById('netlost').hidden = true;
+}
+function waitingScreen(text) {
+  $app.innerHTML = `<section class="curtain"><p class="eyebrow">Online match</p><h2>${esc(text)}</h2><p class="muted">This updates by itself.</p></section>`;
+}
+// BroadcastChannel stand-in with PeerJS's connection shape (used only with ?transport=bc)
+function bcConn(code) {
+  const bc = new BroadcastChannel('sds-' + code), fns = {data: [], close: []};
+  bc.onmessage = e => fns.data.forEach(f => f(e.data));
+  return {send: m => bc.postMessage(m), on: (ev, f) => fns[ev]?.push(f), close: () => bc.close(), _raw: bc};
+}
+function openRoom(role, code, status) {
+  return new Promise((resolve, reject) => {
+    if (USE_BC) {
+      const c = bcConn(code);
+      if (role === 'host') {
+        status(code);
+        const onKnock = e => { if (e.data?.type === 'knock') { c._raw.removeEventListener('message', onKnock); c.send({type: 'welcome'}); resolve(c); } };
+        c._raw.addEventListener('message', onKnock);
+      } else {
+        const t = setInterval(() => c.send({type: 'knock'}), 250);
+        const onWelcome = e => { if (e.data?.type === 'welcome') { clearInterval(t); c._raw.removeEventListener('message', onWelcome); resolve(c); } };
+        c._raw.addEventListener('message', onWelcome);
+      }
+      return;
+    }
+    if (!window.Peer) return reject(new Error("Online play couldn't load. Check your connection, or open the GitHub Pages version of the game."));
+    if (role === 'host') {
+      const peer = new Peer('sds-' + code); NET.peer = peer;
+      peer.on('open', () => status(code));
+      peer.on('connection', c => c.on('open', () => resolve(c)));
+      peer.on('error', e => reject(new Error(e.type === 'unavailable-id' ? 'That room code is taken. Try creating the room again.' : "Couldn't reach the matchmaking server. Try again in a moment.")));
+    } else {
+      const peer = new Peer(); NET.peer = peer;
+      peer.on('open', () => { const c = peer.connect('sds-' + code, {reliable: true}); c.on('open', () => resolve(c)); });
+      peer.on('error', e => reject(new Error(e.type === 'peer-unavailable' ? `No room found with code ${code}. Check the code with your friend.` : "Couldn't reach the matchmaking server. Try again in a moment.")));
+    }
+  });
+}
+
 // ---------- Setup ----------
 const FORMATS = {
   standard: {label: 'Standard Bo3', short: 'STANDARD', blurb: 'Any fully evolved Pokémon with a competitive set.'},
   mega: {label: 'Mega Bo3', short: 'MEGA', blurb: 'Legendaries, Mythicals and Mega Evolutions only. Megas start already Mega Evolved, no stone needed.'},
 };
 function setup() {
+  netClose();
   S = null; renderScore();
-  let mode = 'friend', format = 'standard';
+  const roomParam = (new URLSearchParams(location.search).get('room') || '').toUpperCase();
+  let mode = roomParam ? 'online' : 'friend', format = 'standard';
   $app.innerHTML = `
   <section class="hero">
     <p class="eyebrow">Draft · Build · Best of 3</p>
@@ -266,12 +342,17 @@ function setup() {
       <p class="muted" id="fblurb"></p></div>
     <div class="stack" style="gap:6px"><span class="eyebrow">Opponent</span>
     <div class="row"><span class="seg" role="group" aria-label="Opponent">
-      <button id="m-friend" aria-pressed="true">Friend on this device</button><button id="m-cpu" aria-pressed="false">Vs CPU</button></span></div></div>
+      <button id="m-friend">Friend on this device</button><button id="m-online">Online friend</button><button id="m-cpu">Vs CPU</button></span></div></div>
     <div class="setup-grid">
-      <div class="field"><label for="n1">Player 1</label><input id="n1" value="Jake" maxlength="18"></div>
-      <div class="field"><label for="n2">Player 2</label><input id="n2" value="Challenger" maxlength="18"></div>
+      <div class="field"><label for="n1" id="n1l">Player 1</label><input id="n1" value="Jake" maxlength="18"></div>
+      <div class="field" id="n2f"><label for="n2">Player 2</label><input id="n2" value="Challenger" maxlength="18"></div>
     </div>
-    <div class="row"><button class="btn" id="go">Start draft</button><span class="muted">Level 50, Gen 9 mechanics, Showdown's battle engine.</span></div>
+    <div class="row" id="localgo"><button class="btn" id="go">Start draft</button><span class="muted">Level 50, Gen 9 mechanics, Showdown's battle engine.</span></div>
+    <div class="online stack" id="online" hidden>
+      <div class="row"><button class="btn" id="host">Create a room</button><span class="muted">The room creator's game mode is used.</span></div>
+      <div class="row"><div class="field" style="max-width:160px"><label for="code">Room code</label><input id="code" maxlength="5" autocomplete="off" value="${esc(roomParam)}" style="text-transform:uppercase;font-family:var(--font-data);letter-spacing:.15em"></div><button class="btn ghost" id="join" style="align-self:end">Join room</button></div>
+      <div id="netstatus" class="stack" style="gap:8px"></div>
+    </div>
   </section>`;
   const setFormat = f => {
     format = f; setPool(f);
@@ -281,9 +362,17 @@ function setup() {
   };
   for (const k of Object.keys(FORMATS)) document.getElementById('f-' + k).onclick = () => setFormat(k);
   setFormat('standard');
-  const setMode = m => { mode = m; document.getElementById('m-friend').setAttribute('aria-pressed', m === 'friend'); document.getElementById('m-cpu').setAttribute('aria-pressed', m === 'cpu'); document.getElementById('n2').value = m === 'cpu' ? 'CPU' : 'Challenger'; };
-  document.getElementById('m-friend').onclick = () => setMode('friend');
-  document.getElementById('m-cpu').onclick = () => setMode('cpu');
+  const setMode = m => {
+    mode = m;
+    for (const k of ['friend', 'online', 'cpu']) document.getElementById('m-' + k).setAttribute('aria-pressed', m === k);
+    document.getElementById('n2').value = m === 'cpu' ? 'CPU' : 'Challenger';
+    document.getElementById('n2f').hidden = m === 'online';
+    document.getElementById('n1l').textContent = m === 'online' ? 'Your name' : 'Player 1';
+    document.getElementById('localgo').hidden = m === 'online';
+    document.getElementById('online').hidden = m !== 'online';
+  };
+  for (const k of ['friend', 'online', 'cpu']) document.getElementById('m-' + k).onclick = () => setMode(k);
+  setMode(mode);
   document.getElementById('go').onclick = () => {
     let n1 = document.getElementById('n1').value.trim() || 'Player 1';
     let n2 = document.getElementById('n2').value.trim() || 'Player 2';
@@ -292,6 +381,50 @@ function setup() {
     S.format = format; setPool(format);
     runDraft();
   };
+
+  const $st = document.getElementById('netstatus');
+  const busy = on => { document.getElementById('host').disabled = on; document.getElementById('join').disabled = on; };
+  const fail = e => { busy(false); netClose(); $st.innerHTML = `<p class="err">${esc(e.message)}</p>`; };
+  document.getElementById('host').onclick = async () => {
+    busy(true); $st.innerHTML = '<p class="muted">Creating room…</p>';
+    const code = makeCode();
+    try {
+      const conn = await openRoom('host', code, c => {
+        const link = location.origin + location.pathname + '?room=' + c;
+        $st.innerHTML = `<p class="eyebrow">Room code</p><div class="roomcode">${c}</div>
+          <p class="muted">Send your friend the code, or this link:</p><div class="row"><input id="roomlink" readonly value="${esc(link)}" style="flex:1;min-width:0"><button class="btn ghost" id="copylink">Copy link</button></div>
+          <p class="muted">Waiting for your friend to join…</p>`;
+        document.getElementById('copylink').onclick = async e => {
+          try { await navigator.clipboard.writeText(link); e.target.textContent = 'Copied'; } catch { document.getElementById('roomlink').select(); }
+        };
+      });
+      netAttach(conn);
+      const name = document.getElementById('n1').value.trim() || 'Host';
+      const seed = Array.from({length: 3}, () => Math.floor(Math.random() * 65536)).join(',');
+      netSend('hello', {name, format, seed});
+      const g = await netWait('hello');
+      startOnline(0, [name, g.name === name ? g.name + ' 2' : g.name], format, seed);
+    } catch (e) { fail(e); }
+  };
+  document.getElementById('join').onclick = async () => {
+    const code = document.getElementById('code').value.trim().toUpperCase();
+    if (code.length !== 5) { $st.innerHTML = '<p class="err">Room codes are 5 characters.</p>'; return; }
+    busy(true); $st.innerHTML = '<p class="muted">Joining room…</p>';
+    try {
+      const conn = await openRoom('guest', code, () => {});
+      netAttach(conn);
+      const name = document.getElementById('n1').value.trim() || 'Guest';
+      netSend('hello', {name});
+      const h = await netWait('hello');
+      startOnline(1, [h.name, h.name === name ? name + ' 2' : name], h.format, h.seed);
+    } catch (e) { fail(e); }
+  };
+}
+function startOnline(me, names, format, seed) {
+  S = freshState('online', names);
+  S.me = me; S.format = format; S.seed = seed; S.battles = 0;
+  setPool(format);
+  runDraft();
 }
 
 // ---------- Generic screens ----------
@@ -483,6 +616,15 @@ async function draftFor(i) {
 
 async function runDraft() {
   renderScore('DRAFT');
+  if (S.mode === 'online') {
+    const me = S.me, them = 1 - me;
+    await draftFor(me);
+    netSend('team', S.players[me].roster);
+    waitingScreen(`Waiting for ${S.players[them].name} to finish drafting…`);
+    S.players[them].roster = await netWait('team');
+    await playMatch();
+    return;
+  }
   await draftFor(0);
   await draftFor(1);
   await playMatch();
@@ -608,7 +750,14 @@ async function playMatch() {
     S.game++;
     renderScore(`GAME ${S.game}`);
     const teams = [];
-    for (const i of [0, 1]) {
+    if (S.mode === 'online') {
+      const me = S.me, them = 1 - me;
+      const mine = await bringSelect(me);
+      netSend('bring', mine.map(e => S.players[me].roster.indexOf(e)));
+      waitingScreen(`Waiting for ${S.players[them].name} to pick their ${BRING}…`);
+      const theirs = (await netWait('bring')).map(k => S.players[them].roster[k]);
+      teams.push(...(me === 0 ? [mine, theirs] : [theirs, mine]));
+    } else for (const i of [0, 1]) {
       if (S.mode === 'friend') await curtain(`${S.players[i].name}, pick your ${BRING}`, `Game ${S.game} · hand the device over`, 'Choose team');
       teams.push(await bringSelect(i));
     }
@@ -618,7 +767,14 @@ async function playMatch() {
     renderScore(`GAME ${S.game}`);
     if (S.wins[0] < 2 && S.wins[1] < 2) {
       const loser = 1 - winner;
-      const k = await banSelect(loser, winner);
+      let k;
+      if (S.mode === 'online' && loser !== S.me) {
+        waitingScreen(`You won game ${S.game}. ${S.players[loser].name} is choosing one of your Pokémon to ban…`);
+        k = await netWait('ban');
+      } else {
+        k = await banSelect(loser, winner);
+        if (S.mode === 'online') netSend('ban', k);
+      }
       S.bans[winner].push(k);
       await curtain(`${sp(S.players[winner].roster[k].id).name} is banned`, `${S.players[loser].name} banned it from ${S.players[winner].name}'s team`, `Start game ${S.game + 1}`);
     }
@@ -627,7 +783,10 @@ async function playMatch() {
   renderScore('FINAL');
   $app.innerHTML = `<section class="curtain"><p class="eyebrow">Best of 3 · Final</p><h2>${esc(S.players[w].name)} wins ${Math.max(...S.wins)}–${Math.min(...S.wins)}</h2>
     <div class="row" style="justify-content:center"><button class="btn" id="re">Rematch with same teams</button><button class="btn ghost" id="nd">New draft</button></div></section>`;
-  document.getElementById('re').onclick = () => playMatch();
+  let started = false;
+  const rematch = () => { if (started) return; started = true; playMatch(); };
+  document.getElementById('re').onclick = () => { if (S.mode === 'online') netSend('rematch', 1); rematch(); };
+  if (S.mode === 'online') netWait('rematch').then(rematch);
   document.getElementById('nd').onclick = () => setup();
 }
 
@@ -754,7 +913,7 @@ function humanChoice(sid) {
     const tm = document.getElementById('t-mega'), tt = document.getElementById('t-tera');
     if (tm) tm.onclick = () => { mega = !mega; tm.setAttribute('aria-pressed', mega); };
     if (tt) tt.onclick = () => { tera = !tera; tt.setAttribute('aria-pressed', tera); };
-    const submit = str => { if (B.choose(sid, str)) res(); else document.getElementById('err').textContent = "That choice isn't allowed right now."; };
+    const submit = str => { if (B.choose(sid, str)) res(str); else document.getElementById('err').textContent = "That choice isn't allowed right now."; };
     $app.querySelectorAll('[data-move]').forEach(b => b.onclick = () => submit(`move ${b.dataset.move}${mega ? ' mega' : ''}${tera ? ' terastallize' : ''}`));
     $app.querySelectorAll('[data-sw]').forEach(b => b.onclick = () => submit(`switch ${b.dataset.sw}`));
   });
@@ -789,7 +948,8 @@ function cpuChoice(sid) {
 }
 
 async function playGame(teams) {
-  B = new Battle({formatid: 'gen9customgame'});
+  // Online games share a seed so both browsers compute identical battles
+  B = new Battle(S.mode === 'online' ? {formatid: 'gen9customgame', seed: `${S.seed},${S.battles++}`} : {formatid: 'gen9customgame'});
   B.setPlayer('p1', {name: S.players[0].name, team: Teams.pack(teams[0].map(toSet))});
   B.setPlayer('p2', {name: S.players[1].name, team: Teams.pack(teams[1].map(toSet))});
   if (B.p1.activeRequest?.teamPreview) { B.choose('p1', 'default'); B.choose('p2', 'default'); }
@@ -801,8 +961,19 @@ async function playGame(teams) {
   while (!B.ended) {
     const need = ['p1', 'p2'].filter(sid => { const r = B[sid].activeRequest; return r && !r.wait && !B[sid].isChoiceDone(); });
     if (!need.length) break;
+    const mySid = S.me === 0 ? 'p1' : 'p2';
+    if (S.mode === 'online') need.sort(a => a === mySid ? -1 : 1);
     for (const sid of need) {
       if (isCpu(sideIdx(sid))) { cpuChoice(sid); continue; }
+      if (S.mode === 'online') {
+        if (sid === mySid) netSend('choice', await humanChoice(sid));
+        else {
+          battleShell(mySid, `<p class="muted">Waiting for ${esc(S.players[sideIdx(sid)].name)} to choose…</p>`);
+          const str = await netWait('choice');
+          if (!B.choose(sid, str)) console.error('Opponent choice rejected', str);
+        }
+        continue;
+      }
       if (S.mode === 'friend' && need.length > 1 && lastViewer !== sid) {
         await curtain(`${S.players[sideIdx(sid)].name}'s move`, `Turn ${B.turn} · hand the device over`, 'Show my options');
       } else if (S.mode === 'friend' && lastViewer && lastViewer !== sid) {
@@ -811,7 +982,7 @@ async function playGame(teams) {
       lastViewer = sid;
       await humanChoice(sid);
     }
-    const viewer = S.mode === 'cpu' ? 'p1' : (lastViewer || 'p1');
+    const viewer = S.mode === 'cpu' ? 'p1' : S.mode === 'online' ? mySid : (lastViewer || 'p1');
     battleShell(viewer, `<p class="muted">Resolving turn…</p>`);
     await revealLog();
     document.getElementById('stage').innerHTML = stageHtml(viewer);
