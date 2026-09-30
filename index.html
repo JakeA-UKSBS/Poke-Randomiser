@@ -124,7 +124,9 @@ button.card { transition: transform .12s, border-color .12s; }
 .pick-main .types { justify-content: center; }
 .pick-main .type { font-size: 12px; padding: 3px 8px; }
 .pick-hint { font-size: 12px; color: var(--muted); }
-.pick-more { display: grid; gap: 12px; padding: 0 16px 16px; }
+.pick-stats { background: transparent; border: 0; border-top: 1px solid var(--line); color: var(--muted); padding: 9px; font-size: 13px; font-weight: 600; width: 100%; }
+.pick-stats:hover { color: var(--fg); background: var(--panel-2); }
+.pick-more { display: grid; gap: 12px; padding: 0 16px 14px; }
 .pick-more .stats { grid-template-columns: 36px 32px 1fr; font-size: 12.5px; gap: 5px 8px; }
 .abil { font-size: 13px; }
 .abil b { color: var(--gold); font-weight: 600; }
@@ -166,34 +168,42 @@ select { background: var(--panel-2); border: 1px solid var(--line); border-radiu
 .bring .card.banned .sprite { filter: grayscale(1); }
 
 /* Battle */
-.battle { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 14px; align-items: start; }
-@media (max-width: 760px) { .battle { grid-template-columns: 1fr; } }
-.stage { border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: grid; gap: 10px; }
+/* Battle screen: the arena covers the page; the field, controls and log sit on it */
+.wrap:has(> .battle) { max-width: none; padding: 0; }
+.battle { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 380px); gap: 16px; padding: 16px; min-height: calc(100vh - 66px); align-items: start; }
+.bfield { display: grid; gap: 14px; min-width: 0; max-width: 980px; width: 100%; justify-self: center; }
+@media (max-width: 860px) { .battle { grid-template-columns: 1fr; min-height: 0; } }
+.stage { display: grid; gap: 14px; padding: 4px 4px 0; }
+.panel { background: rgba(9, 14, 30, .88); border: 1px solid rgba(255,255,255,.14); border-radius: 12px; padding: 12px 14px; backdrop-filter: blur(4px); box-shadow: 0 10px 30px rgba(0,0,0,.35); }
 .fieldbar { display: flex; gap: 6px; flex-wrap: wrap; min-height: 22px; align-items: flex-start; }
 .chip { font-family: var(--font-data); font-size: 11px; padding: 2px 7px; border-radius: 3px; background: var(--panel); border: 1px solid var(--line); color: var(--muted); }
-.mon { display: grid; grid-template-columns: 1fr 130px; gap: 10px; align-items: center; }
-.mon.me { grid-template-columns: 130px 1fr; }
+.mon { display: grid; grid-template-columns: minmax(0, 1fr) 170px; gap: 14px; align-items: center; }
+.mon.me { grid-template-columns: 170px minmax(0, 1fr); }
+.mon.foe .hud { max-width: 420px; }
+.mon.me .hud { max-width: 420px; justify-self: end; width: 100%; }
 .mon.me .sprite { transform: scaleX(-1); }
-.mon .sprite { width: 120px; height: 120px; }
-.hud { background: color-mix(in srgb, var(--bg) 88%, transparent); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; display: grid; gap: 5px; min-width: 0; backdrop-filter: blur(2px); }
+.mon .sprite { width: 150px; height: 150px; }
+@media (max-width: 560px) { .mon { grid-template-columns: minmax(0, 1fr) 120px; } .mon.me { grid-template-columns: 120px minmax(0, 1fr); } .mon .sprite { width: 110px; height: 110px; } }
+.hud { background: rgba(9, 14, 30, .86); border: 1px solid rgba(255,255,255,.14); border-radius: 8px; padding: 8px 10px; display: grid; gap: 5px; min-width: 0; backdrop-filter: blur(2px); }
 .hud.empty { visibility: hidden; }
 
-/* Arena: a floodlit night stadium drawn in CSS; content sits above the layers */
-.arena { position: relative; overflow: hidden; min-height: 340px; isolation: isolate;
+/* Arena: a floodlit night stadium drawn in CSS; stands along the top, pitch below */
+.arena { position: relative; overflow: hidden; isolation: isolate;
   background:
-    radial-gradient(ellipse 28% 22% at 12% 0%, rgba(255,244,210,.28), transparent 70%),
-    radial-gradient(ellipse 28% 22% at 88% 0%, rgba(255,244,210,.28), transparent 70%),
-    radial-gradient(circle, rgba(255,255,255,.22) 1px, transparent 1.6px) 0 18% / 9px 7px repeat-x,
-    repeating-linear-gradient(90deg, #1c2b54 0 16px, #18264b 16px 32px) 0 0 / 100% 36% no-repeat,
-    linear-gradient(180deg, #0b1330 0%, #14224a 36%, #2e7a3e 36%, #2b7139 100%); }
-.arena::before { content: ''; position: absolute; inset: 36% 0 0 0; z-index: -1;
+    radial-gradient(ellipse 30% 20% at 10% 0%, rgba(255,244,210,.3), transparent 70%),
+    radial-gradient(ellipse 30% 20% at 90% 0%, rgba(255,244,210,.3), transparent 70%),
+    radial-gradient(circle, rgba(255,255,255,.22) 1px, transparent 1.6px) 0 8% / 9px 7px repeat-x,
+    radial-gradient(circle, rgba(255,255,255,.16) 1px, transparent 1.6px) 4px 14% / 11px 8px repeat-x,
+    repeating-linear-gradient(90deg, #1c2b54 0 16px, #18264b 16px 32px) 0 0 / 100% 20% no-repeat,
+    linear-gradient(180deg, #0b1330 0%, #14224a 20%, #2e7a3e 20%, #2b7139 100%); }
+.arena::before { content: ''; position: absolute; inset: 20% 0 0 0; z-index: -1;
   background:
-    radial-gradient(ellipse 22% 18% at 50% 52%, transparent 96%, rgba(255,255,255,.5) 97% 99%, transparent 100%),
-    linear-gradient(90deg, transparent calc(50% - 1px), rgba(255,255,255,.45) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)),
-    repeating-linear-gradient(90deg, rgba(255,255,255,.05) 0 48px, transparent 48px 96px); }
-.arena::after { content: ''; position: absolute; left: 0; right: 0; top: 36%; height: 3px; background: rgba(255,255,255,.35); z-index: -1; }
+    radial-gradient(ellipse 18% 16% at 40% 42%, transparent 96%, rgba(255,255,255,.45) 97% 99%, transparent 100%),
+    linear-gradient(90deg, transparent calc(40% - 1px), rgba(255,255,255,.4) calc(40% - 1px) calc(40% + 1px), transparent calc(40% + 1px)),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.05) 0 60px, transparent 60px 120px); }
+.arena::after { content: ''; position: absolute; left: 0; right: 0; top: 20%; height: 3px; background: rgba(255,255,255,.35); z-index: -1; }
 .arena > * { position: relative; }
-.arena .fieldbar .chip { background: rgba(10,15,30,.75); }
+.arena .fieldbar .chip { background: rgba(10,15,30,.8); }
 .plat { position: relative; display: grid; place-items: center; }
 .plat::before { content: ''; position: absolute; bottom: 2px; left: 50%; width: 118px; height: 26px; transform: translateX(-50%); border-radius: 50%;
   background: radial-gradient(ellipse, rgba(0,0,0,.45), rgba(0,0,0,.15) 60%, transparent 72%); box-shadow: 0 0 0 2px rgba(255,255,255,.14); }
@@ -259,7 +269,8 @@ select { background: var(--panel-2); border: 1px solid var(--line); border-radiu
 .hp i.mid { background: var(--warn); }
 .hp i.low { background: var(--bad); }
 .hpnum { font-family: var(--font-data); font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.status { font-family: var(--font-data); font-size: 10.5px; padding: 1px 5px; border-radius: 3px; background: var(--bad); color: #fff; text-transform: uppercase; }
+.status { font-family: var(--font-data); font-size: 10.5px; font-weight: 700; padding: 1px 5px; border-radius: 3px; background: var(--bad); color: #12131a; text-transform: uppercase; }
+.helditem { color: var(--gold); font-weight: 600; }
 .bench { display: flex; gap: 4px; }
 .bench i { width: 10px; height: 10px; border-radius: 50%; background: var(--good); display: block; }
 .bench i.f { background: var(--line); }
@@ -278,6 +289,27 @@ select { background: var(--panel-2); border: 1px solid var(--line); border-radiu
 .toggle { display: inline-flex; align-items: center; gap: 6px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; font-size: 13px; }
 .toggle[aria-pressed="true"] { border-color: var(--gold); color: var(--gold); }
 .log { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; height: min(560px, 70vh); overflow-y: auto; font-size: 13.5px; display: flex; flex-direction: column; gap: 3px; }
+.log.panel { height: calc(100vh - 98px); position: sticky; top: 82px; }
+@media (max-width: 860px) { .log.panel { height: 45vh; position: static; } }
+.move .desc { font-size: 11px; line-height: 1.3; opacity: .95; }
+.mvdesc { grid-column: 1 / -1; font-size: 11.5px; color: var(--muted); line-height: 1.3; }
+
+/* Persistent status effects on the sprite */
+.spr::before { content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 2; opacity: 0; }
+.spr[data-status="brn"]::before { opacity: 1; background: radial-gradient(ellipse 55% 40% at 50% 88%, rgba(255,110,40,.6), transparent 70%); animation: flick .8s ease-in-out infinite alternate; }
+.spr[data-status="psn"]::before, .spr[data-status="tox"]::before { opacity: 1; background: radial-gradient(circle, rgba(190,90,255,.85) 3px, transparent 4px) 0 0 / 26px 30px;
+  -webkit-mask-image: radial-gradient(circle, #000 35%, transparent 68%); mask-image: radial-gradient(circle, #000 35%, transparent 68%); animation: bubbles 2s linear infinite; }
+.spr[data-status="tox"]::before { background-size: 20px 24px; }
+.spr[data-status="par"]::before { opacity: 1;
+  background: linear-gradient(115deg, transparent 44%, rgba(255,230,60,.95) 45% 47%, transparent 48%), linear-gradient(65deg, transparent 58%, rgba(255,230,60,.95) 59% 60.5%, transparent 61.5%);
+  animation: zap 1.3s steps(1) infinite; }
+.spr[data-status="slp"]::before { opacity: 1; content: 'z Z z'; color: #d6e3ff; font-weight: 800; font-size: 18px; display: grid; justify-items: end; align-items: start; padding: 2px 6px; animation: zzz 2.2s ease-in-out infinite; }
+.spr[data-status="frz"]::before { opacity: 1; border-radius: 22px; background: linear-gradient(135deg, rgba(180,235,255,.45), rgba(120,190,255,.2)); box-shadow: inset 0 0 22px rgba(210,245,255,.9); }
+.spr[data-status="frz"] .sprite { filter: saturate(.5) brightness(1.1) hue-rotate(160deg); }
+@keyframes flick { from { opacity: .55; } to { opacity: 1; } }
+@keyframes bubbles { from { background-position: 0 30px; } to { background-position: 0 -30px; } }
+@keyframes zap { 0% { opacity: 1; } 15% { opacity: 0; } 50% { opacity: 1; transform: scaleX(-1); } 62% { opacity: 0; } }
+@keyframes zzz { 0%, 100% { transform: translateY(4px); opacity: .6; } 50% { transform: translateY(-6px); opacity: 1; } }
 .log .t { font-family: var(--font-display); color: var(--accent); margin-top: 8px; font-size: 13px; }
 .log .big { color: var(--gold); font-weight: 600; }
 .log .sub { color: var(--muted); }
@@ -580,12 +612,13 @@ function curtain(title, sub, btn = 'Ready') {
     document.getElementById('ok').onclick = res; document.getElementById('ok').focus();
   });
 }
-// Pick card: tap the Pokémon to open its stats, then confirm with Pick
+// Pick card: tap the Pokémon to pick it; the Stats button underneath opens its base stats
 function monCard(id, extra = '') {
   const s = sp(id);
   return `<div class="card pickcard" data-id="${s.id}">
-    <button class="pick-main" aria-expanded="false">${spriteHtml(id)}<div class="name">${esc(s.name)}</div>${typeChips(s.types)}${extra}<span class="pick-hint">Tap for stats</span></button>
-    <div class="pick-more" hidden>${statBlock(id)}<button class="btn pick-go">Pick ${esc(s.name)}</button></div>
+    <button class="pick-main" title="Pick ${esc(s.name)}">${spriteHtml(id)}<div class="name">${esc(s.name)}</div>${typeChips(s.types)}${extra}</button>
+    <div class="pick-more" hidden>${statBlock(id)}</div>
+    <button class="pick-stats" aria-expanded="false">Stats <span aria-hidden="true">▾</span></button>
   </div>`;
 }
 function teamStrip(pl) {
@@ -599,14 +632,14 @@ function choose(title, sub, ids, extraFn, pl) {
   return new Promise(res => {
     $app.innerHTML = `<section class="stack"><div><p class="eyebrow">${esc(sub)}</p><h2>${esc(title)}</h2></div><div class="picks">${ids.map(id => monCard(id, extraFn ? extraFn(id) : '')).join('')}</div>${teamStrip(pl)}</section>`;
     $app.querySelectorAll('.pickcard').forEach(c => {
-      const main = c.querySelector('.pick-main'), more = c.querySelector('.pick-more');
-      main.onclick = () => {
+      const btn = c.querySelector('.pick-stats'), more = c.querySelector('.pick-more');
+      btn.onclick = () => {
         const open = more.hidden;
-        more.hidden = !open; main.setAttribute('aria-expanded', open);
+        more.hidden = !open; btn.setAttribute('aria-expanded', open);
+        btn.querySelector('span').textContent = open ? '▴' : '▾';
         c.classList.toggle('open', open);
-        main.querySelector('.pick-hint').textContent = open ? 'Tap to hide stats' : 'Tap for stats';
       };
-      c.querySelector('.pick-go').onclick = () => res(c.dataset.id);
+      c.querySelector('.pick-main').onclick = () => res(c.dataset.id);
     });
   });
 }
@@ -697,13 +730,18 @@ function newEntry(id, ability, rolled, taken = []) {
   const s = sp(id), b = s.baseStats;
   let d;
   try { d = defaultSet(id); } catch { d = {moves: [], item: 'Leftovers', teraType: s.types[0]}; }
-  if (s.isMega) { if (!d.moves.filter(Boolean).length) d.moves = mpool(id).slice(0, 4); if (Dex.items.get(d.item).megaStone) d.item = ''; }
+  if (s.isMega) {
+    // Newer Megas have no set of their own: use the base form's competitive set
+    if (!d.moves.filter(Boolean).length) { try { d.moves = defaultSet(baseOf(id)).moves; } catch {} }
+    if (!d.moves.filter(Boolean).length) d.moves = mpool(id).slice(0, 4);
+    if (Dex.items.get(d.item).megaStone) d.item = '';
+  }
   const item = [d.item, ...FALLBACK_ITEMS, ...COMMON_ITEMS].find(x => x && !taken.includes(x));
   let spread = b.atk >= b.spa ? (b.spe >= 90 ? 'physfast' : 'physpow') : (b.spe >= 90 ? 'specfast' : 'specpow');
   if (Math.max(b.atk, b.spa) < 80) spread = b.def >= b.spd ? 'physwall' : 'specwall';
   const moves = [...d.moves]; while (moves.length < 4) moves.push('');
   const tera = TYPES.includes(d.teraType) ? d.teraType : s.types[0];
-  return {id, ability: ability || d.ability || s.abilities[0], rolled: !!rolled, moves, item, tera, spread, full: false};
+  return {id, ability: ability || d.ability || s.abilities[0], rolled: !!rolled, moves, item, tera, spread, full: true};
 }
 
 // Never offer an ability already on this player's team (or in `also`, e.g. the set being rerolled)
@@ -811,6 +849,8 @@ function moveMeta(name) {
   return `<span class="type" style="background:${TYPE_COLORS[m.type] || '#666'}">${esc(m.type)}</span> ${m.category === 'Status' ? 'Status' : (m.basePower || '—') + ' ' + (m.category === 'Physical' ? 'Phys' : 'Spec')}`;
 }
 const moveColor = name => name ? TYPE_COLORS[Dex.moves.get(name).type] || 'var(--line)' : 'var(--line)';
+// Showdown's one-line move summary ("30% chance to paralyze the target."), skipping plain attacks
+const moveDesc = mv => { const d = mv.shortDesc || ''; return /^no additional effect/i.test(d) ? '' : d; };
 function builderCard(e, idx, roster) {
   const s = sp(e.id);
   const pool = e.full ? learnset(e.id) : mpool(e.id);
@@ -829,7 +869,7 @@ function builderCard(e, idx, roster) {
     <div class="top">${spriteHtml(e.id)}<div><div class="name">${esc(s.name)}</div>${typeChips(s.types)}</div></div>
     <div class="fields">
       ${abilSel}
-      ${e.moves.map((m, j) => `<div class="mv full"><select id="mv-${idx}-${j}" data-k="move" data-j="${j}" aria-label="Move ${j + 1}" style="border-left:6px solid ${moveColor(m)}"><option value="">—</option>${allMoves.map(x => `<option style="background:${moveColor(x)};color:#fff" ${x === m ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select><span class="meta">${moveMeta(m)}</span></div>`).join('')}
+      ${e.moves.map((m, j) => `<div class="mv full"><select id="mv-${idx}-${j}" data-k="move" data-j="${j}" aria-label="Move ${j + 1}" style="border-left:6px solid ${moveColor(m)}"><option value="">—</option>${allMoves.map(x => `<option style="background:${moveColor(x)};color:#fff" ${x === m ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select><span class="meta">${moveMeta(m)}</span>${m && moveDesc(Dex.moves.get(m)) ? `<small class="mvdesc">${esc(moveDesc(Dex.moves.get(m)))}</small>` : ''}</div>`).join('')}
       <label class="chk full"><input type="checkbox" id="full-${idx}" data-k="full" ${e.full ? 'checked' : ''}> Show full learnset (${learnset(e.id).length} moves)</label>
       <div class="field"><label for="it-${idx}">Item</label><select id="it-${idx}" data-k="item">${megas.length ? `<optgroup label="Mega Stone">${megas.map(itemOpt).join('')}</optgroup>` : ''}<optgroup label="Items">${itemOpts.filter(x => !megas.includes(x)).map(itemOpt).join('')}</optgroup></select></div>
       <div class="field"><label for="te-${idx}">Tera type</label><select id="te-${idx}" data-k="tera" ${isMega ? 'disabled' : ''}>${isMega ? '<option>Mega instead</option>' : TYPES.map(t => `<option ${t === e.tera ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
@@ -1007,7 +1047,13 @@ function describe(line) {
     case '-unboost': return {t: `${monLabel(a)}'s ${STAT[b] || b} fell${+c > 1 ? ` by ${c}` : ''}${fromTag(p)}.`, cls: 'sub'};
     case '-ability': return {t: `[${monLabel(a)}'s ${b}]`, cls: 'sub'};
     case '-item': return {t: `${monLabel(a)} has ${b}${fromTag(p)}.`, cls: 'sub'};
-    case '-enditem': return {t: `${monLabel(a)}'s ${b} was used up.`, cls: 'sub'};
+    case '-enditem': {
+      const from = p.find(x => x.startsWith('[from]')) || '';
+      if (/knock off/i.test(from)) return {t: `${monLabel(a)}'s ${b} was knocked off!`};
+      if (p.includes('[eat]')) return {t: `${monLabel(a)} ate its ${b}.`, cls: 'sub'};
+      if (/move: /.test(from)) return {t: `${monLabel(a)} lost its ${b}${fromTag(p)}.`};
+      return {t: `${monLabel(a)}'s ${b} was used up.`, cls: 'sub'};
+    }
     case '-weather': return p.includes('[upkeep]') ? null : {t: b === 'none' || a === 'none' ? 'The weather cleared.' : `Weather: ${a.replace(/([a-z])([A-Z])/g, '$1 $2')}${fromTag(p)}.`};
     case '-fieldstart': return {t: `${a.replace('move: ', '')} took effect.`};
     case '-fieldend': return {t: `${a.replace('move: ', '')} wore off.`, cls: 'sub'};
@@ -1050,7 +1096,7 @@ function takeSnap() {
   for (const sid of ['p1', 'p2']) {
     const s = B[sid], m = s.active[0];
     o[sid] = {name: s.name, conds: Object.keys(s.sideConditions), bench: s.pokemon.map(p => ({n: p.species.name, f: p.fainted})),
-      mon: m ? {id: m.species.id, name: m.species.name, hp: m.hp, maxhp: m.maxhp, status: m.status, types: m.getTypes(), tera: m.terastallized || '', boosts: {...m.boosts}, ability: m.getAbility().name, fainted: m.fainted} : null};
+      mon: m ? {id: m.species.id, name: m.species.name, hp: m.hp, maxhp: m.maxhp, status: m.status, types: m.getTypes(), tera: m.terastallized || '', boosts: {...m.boosts}, ability: m.getAbility().name, item: m.item ? Dex.items.get(m.item).name : '', fainted: m.fainted} : null};
   }
   return o;
 }
@@ -1065,8 +1111,8 @@ function hudHtml(sid, s, mine) {
   const bench = s.bench.map(p => `<i class="${p.f ? 'f' : ''}" title="${esc(p.n)}"></i>`).join('');
   return `<div class="hud${m ? '' : ' empty'}" id="hud-${sid}"><div class="l1"><span class="name" id="nm-${sid}">${esc(m?.name || '')}</span><span class="hpnum" id="hpt-${sid}">${m ? (mine ? `${m.hp}/${m.maxhp}` : pct + '%') : ''}</span></div>
     <div class="hp"><i id="hpb-${sid}" class="${hpClass(pct)}" style="width:${pct}%"></i></div>
-    <div class="row" style="gap:5px" id="tags-${sid}">${m ? typeChips(m.types) : ''}${m?.status ? `<span class="status">${m.status}</span>` : ''}${m?.tera ? `<span class="chip" style="color:var(--gold)">Tera ${esc(m.tera)}</span>` : ''}${boosts}</div>
-    <div class="row" style="justify-content:space-between"><span class="muted" style="font-size:12px">${esc(s.name)}${m ? ' · ' + esc(m.ability) : ''}</span><span class="bench">${bench}</span></div></div>`;
+    <div class="row" style="gap:5px" id="tags-${sid}">${m ? typeChips(m.types) : ''}${m?.status ? `<span class="status" style="background:${STATUS_COLORS[m.status] || 'var(--bad)'}">${m.status}</span>` : ''}${m?.tera ? `<span class="chip" style="color:var(--gold)">Tera ${esc(m.tera)}</span>` : ''}${boosts}</div>
+    <div class="row" style="justify-content:space-between"><span class="muted" style="font-size:12px">${esc(s.name)}${m ? ' · ' + esc(m.ability) : ''}${mine && m ? ` · <span class="helditem" id="item-${sid}">${esc(m.item || 'No item')}</span>` : ''}</span><span class="bench">${bench}</span></div></div>`;
 }
 function stageHtml(viewer, snap = takeSnap()) {
   const foeSid = viewer === 'p1' ? 'p2' : 'p1';
@@ -1075,9 +1121,8 @@ function stageHtml(viewer, snap = takeSnap()) {
   if (snap.terrain) chips.push(Dex.conditions.get(snap.terrain).name);
   for (const k of snap.pseudo) chips.push(Dex.conditions.get(k).name);
   for (const [who, sid] of [['Foe', foeSid], ['You', viewer]]) for (const k of snap[sid].conds) chips.push(`${who}: ${Dex.conditions.get(k).name}`);
-  const spr = sid => { const m = snap[sid].mon; return `<div class="plat"><div class="spr${m?.fainted ? ' gone' : ''}" id="spr-${sid}">${m ? spriteHtml(m.id) : ''}</div></div>`; };
-  return `<div class="stage arena" id="arena" data-weather="${weatherKey(snap.weather)}">
-    <div class="wx" aria-hidden="true"></div>
+  const spr = sid => { const m = snap[sid].mon; return `<div class="plat"><div class="spr${m?.fainted ? ' gone' : ''}" id="spr-${sid}"${m?.status && !m.fainted ? ` data-status="${m.status}"` : ''}>${m ? spriteHtml(m.id) : ''}</div></div>`; };
+  return `<div class="stage">
     <div class="fieldbar"><span class="row" style="gap:6px;flex:1">${chips.map(c => `<span class="chip">${esc(c)}</span>`).join('')}</span><button class="mute" id="mute" aria-pressed="${SFX.muted}" title="Sound">${SFX.muted ? 'Sound off' : 'Sound on'}</button></div>
     <div class="mon foe">${hudHtml(foeSid, snap[foeSid], false)}${spr(foeSid)}</div>
     <div class="mon me">${spr(viewer)}${hudHtml(viewer, snap[viewer], true)}</div>
@@ -1085,6 +1130,7 @@ function stageHtml(viewer, snap = takeSnap()) {
   </div>`;
 }
 
+const STATUS_COLORS = {brn: '#ff7a2e', psn: '#b45aff', tox: '#b45aff', par: '#ffe23c', slp: '#9fb7ff', frz: '#8fe3ff'};
 // Replays one protocol line on the stage; returns how long to hold before the next line
 function animateLine(p, fx) {
   const [cmd, a, b, c] = p;
@@ -1110,10 +1156,12 @@ function animateLine(p, fx) {
     case 'switch': case 'drag': case 'replace': {
       const sid = sidOf(a), s = sp(b.split(',')[0]);
       const box = $('spr-' + sid); if (!box) return 0;
-      box.classList.remove('gone', 'faint'); box.innerHTML = spriteHtml(s.id);
+      box.classList.remove('gone', 'faint'); delete box.dataset.status; box.innerHTML = spriteHtml(s.id);
       $('hud-' + sid)?.classList.remove('empty');
       if ($('nm-' + sid)) $('nm-' + sid).textContent = s.name;
       if ($('tags-' + sid)) $('tags-' + sid).innerHTML = typeChips(s.types);
+      const it = $('item-' + sid);
+      if (it) { const pk = B[sid].pokemon.find(x => x.species.name === s.name || x.baseSpecies.name === s.baseSpecies); it.textContent = pk?.item ? Dex.items.get(pk.item).name : 'No item'; }
       setHp(sid, c); pulse(box, 'enter', 500); sfx('switch'); return 480;
     }
     case 'detailschange': {
@@ -1142,22 +1190,30 @@ function animateLine(p, fx) {
     case '-crit': pulse($('arena'), 'critflash', 300); sfx('crit'); return 150;
     case '-damage': {
       const sid = sidOf(a); setHp(sid, b);
-      if (p.some(x => x.startsWith('[from]'))) { pulse($('spr-' + sid), 'hurt', 320); sfx('chip'); return 320; }
+      if (p.some(x => x.startsWith('[from]'))) {
+        pulse($('spr-' + sid), 'hurt', 320);
+        const st = (p.find(x => x.startsWith('[from]')) || '').replace('[from] ', '');
+        if (STATUS_COLORS[st]) spawn('burst', STATUS_COLORS[st], center(sid));
+        sfx('chip'); return 320;
+      }
       pulse($('spr-' + sid), 'hit', 420);
       spawn('burst', fx.last?.color || '#fff', center(sid));
       sfx(fx.eff === 'se' ? 'hitSE' : fx.eff === 'nve' ? 'hitNVE' : 'hit'); fx.eff = null;
       return 440;
     }
     case '-heal': { const sid = sidOf(a); setHp(sid, b); pulse($('spr-' + sid), 'heal', 600); sfx('heal'); return 450; }
-    case 'faint': { const box = $('spr-' + sidOf(a)); box?.classList.add('faint'); sfx('faint'); return 700; }
+    case 'faint': { const box = $('spr-' + sidOf(a)); box?.classList.add('faint'); if (box) delete box.dataset.status; sfx('faint'); return 700; }
     case '-boost': pulse($('spr-' + sidOf(a)), 'up', 700); sfx('up'); return 450;
     case '-unboost': pulse($('spr-' + sidOf(a)), 'down', 700); sfx('down'); return 450;
     case '-status': {
       const sid = sidOf(a), tags = $('tags-' + sid);
-      if (tags && !tags.querySelector('.status')) tags.insertAdjacentHTML('beforeend', `<span class="status">${esc(b)}</span>`);
+      if (tags && !tags.querySelector('.status')) tags.insertAdjacentHTML('beforeend', `<span class="status" style="background:${STATUS_COLORS[b] || 'var(--bad)'}">${esc(b)}</span>`);
+      if ($('spr-' + sid)) $('spr-' + sid).dataset.status = b;
       pulse($('spr-' + sid), 'afflict', 600); sfx('statusHit'); return 450;
     }
-    case '-curestatus': $('tags-' + sidOf(a))?.querySelector('.status')?.remove(); return 0;
+    case '-curestatus': { $('tags-' + sidOf(a))?.querySelector('.status')?.remove(); const box = $('spr-' + sidOf(a)); if (box) delete box.dataset.status; return 0; }
+    case '-enditem': { const it = $('item-' + sidOf(a)); if (it) it.textContent = 'No item'; return 0; }
+    case '-item': { const it = $('item-' + sidOf(a)); if (it) it.textContent = b; return 0; }
     case '-mega': pulse($('spr-' + sidOf(a)), 'mega', 1000); sfx('mega'); return 1000;
     case '-terastallize': {
       const box = $('spr-' + sidOf(a)); if (box) box.style.setProperty('--tc', TYPE_COLORS[b] || '#fff');
@@ -1219,7 +1275,11 @@ document.addEventListener('click', e => {
 
 function battleShell(viewer, controls, snap) {
   const keep = $log;
-  $app.innerHTML = `<section class="battle"><div class="stack"><div id="stage">${stageHtml(viewer, snap)}</div><div class="controls" id="controls">${controls}</div></div><div class="log" id="log" aria-live="polite"></div></section>`;
+  const s = snap || takeSnap();
+  // The arena fills the whole battle screen; controls and log float over it as panels
+  $app.innerHTML = `<section class="battle arena" id="arena" data-weather="${weatherKey(s.weather)}"><div class="wx" aria-hidden="true"></div>
+    <div class="bfield"><div id="stage">${stageHtml(viewer, s)}</div><div class="controls panel" id="controls">${controls}</div></div>
+    <div class="log panel" id="log" aria-live="polite"></div></section>`;
   const fresh = document.getElementById('log');
   // Re-attaching the kept log resets its scroll, so jump back to the latest line
   if (keep) { fresh.replaceWith(keep); keep.scrollTop = keep.scrollHeight; } else { $log = fresh; }
@@ -1242,12 +1302,12 @@ function controlsHtml(sid) {
     };
     html += `<div class="moves">${act.moves.map((m, k) => { const mv = Dex.moves.get(m.id); const col = TYPE_COLORS[mv.type] || '#555';
       const acc = mv.accuracy === true ? 'Never misses' : `${mv.accuracy}% acc`;
-      return `<button class="move" data-move="${k + 1}" style="background:${col}" ${m.disabled ? 'disabled' : ''}><b>${esc(m.move)}</b><span>${esc(mv.type)} · ${mv.category === 'Status' ? 'Status' : (mv.basePower || '—') + ' BP'} · ${acc}${m.maxpp ? ` · ${m.pp}/${m.maxpp} PP` : ''}</span>${effNote(mv)}</button>`; }).join('')}</div>`;
+      return `<button class="move" data-move="${k + 1}" style="background:${col}" ${m.disabled ? 'disabled' : ''}><b>${esc(m.move)}</b><span>${esc(mv.type)} · ${mv.category === 'Status' ? 'Status' : (mv.basePower || '—') + ' BP'} · ${acc}${mv.priority ? ` · Priority ${mv.priority > 0 ? '+' : ''}${mv.priority}` : ''}${m.maxpp ? ` · ${m.pp}/${m.maxpp} PP` : ''}</span>${moveDesc(mv) ? `<small class="desc">${esc(moveDesc(mv))}</small>` : ''}${effNote(mv)}</button>`; }).join('')}</div>`;
   }
   const trapped = !req.forceSwitch && act?.trapped;
   html += `<div class="eyebrow">${trapped ? 'Trapped — cannot switch' : 'Switch'}</div><div class="switches">${req.side.pokemon.map((p, k) => {
     const fnt = p.condition.endsWith('fnt'); const s = sp(p.details.split(',')[0]);
-    return `<button class="sw" data-sw="${k + 1}" ${p.active || fnt || trapped ? 'disabled' : ''}>${spriteHtml(s.id)}<span>${esc(s.name)}<br><span class="hpnum">${fnt ? 'fainted' : hpPct(p.condition) + '%'}</span></span></button>`; }).join('')}</div><div class="err" id="err"></div>`;
+    return `<button class="sw" data-sw="${k + 1}" ${p.active || fnt || trapped ? 'disabled' : ''}>${spriteHtml(s.id)}<span>${esc(s.name)}<br><span class="hpnum">${fnt ? 'fainted' : hpPct(p.condition) + '%'}${p.item ? ' · ' + esc(Dex.items.get(p.item).name) : ''}</span></span></button>`; }).join('')}</div><div class="err" id="err"></div>`;
   return html;
 }
 
@@ -1334,6 +1394,7 @@ async function playGame(teams) {
     await revealLog(viewer);
     await sleep(250);
     document.getElementById('stage').innerHTML = stageHtml(viewer);
+    document.getElementById('arena').dataset.weather = weatherKey(B.field.weather);
     if (S.mode === 'friend') lastViewer = null;
   }
   await sleep(700);
