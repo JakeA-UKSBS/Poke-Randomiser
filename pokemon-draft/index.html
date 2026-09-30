@@ -1,0 +1,829 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+</head>
+<body>
+<title>Starter Draft Showdown</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: stadium scoreboard — a score bar across the top, one central stage below that swaps between draft, builder and battle */
+:root {
+  --bg: #0f1729;
+  --panel: #182340;
+  --panel-2: #1f2d52;
+  --line: #2d3d68;
+  --fg: #eef1f8;
+  --muted: #93a0c2;
+  --accent: #ff6247;
+  --accent-ink: #1a0b07;
+  --gold: #ffcd3c;
+  --good: #3ccf7a;
+  --warn: #f5b93a;
+  --bad: #ef4b4b;
+  --font-display: "Bungee", "Impact", "Arial Black", sans-serif;
+  --font-body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--bg); color: var(--fg); }
+body { font-family: var(--font-body); font-size: 15px; line-height: 1.45; margin: 0; }
+.wrap { max-width: 1080px; margin: 0 auto; padding-inline: 16px; padding-block: 12px 40px; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 400; letter-spacing: .02em; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(28px, 6vw, 46px); line-height: 1.05; }
+h2 { font-size: clamp(20px, 4vw, 28px); }
+h3 { font-size: 16px; }
+p { margin: 0; }
+.muted { color: var(--muted); }
+.eyebrow { font-family: var(--font-data); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+button, select, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+button:focus-visible, select:focus-visible, input:focus-visible, .card:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.btn { background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 6px; padding: 10px 18px; font-weight: 700; letter-spacing: .01em; }
+.btn:hover { filter: brightness(1.08); }
+.btn:disabled { opacity: .45; cursor: not-allowed; filter: none; }
+.btn.ghost { background: transparent; color: var(--fg); border: 1px solid var(--line); }
+.btn.ghost:hover { border-color: var(--muted); }
+.row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.stack { display: flex; flex-direction: column; gap: 14px; }
+
+/* Scoreboard */
+.score { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; background: var(--panel); border-bottom: 3px solid var(--accent); padding: 10px 16px; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; }
+.score .side { font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.score .side.r { text-align: right; }
+.score .mid { font-family: var(--font-display); font-size: 22px; text-align: center; }
+.score .mid small { display: block; font-family: var(--font-data); font-size: 11px; color: var(--muted); letter-spacing: .1em; }
+.score .brand { font-family: var(--font-display); font-size: 16px; color: var(--accent); }
+
+/* Setup */
+.hero { display: grid; gap: 18px; padding-block: 28px 8px; }
+.hero h1 span { color: var(--accent); }
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.step { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+.step b { font-family: var(--font-data); color: var(--gold); display: block; font-size: 12px; margin-bottom: 4px; }
+.field { display: grid; gap: 6px; min-width: 0; }
+.field label { font-size: 13px; color: var(--muted); }
+.field input, .field select { background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 9px 10px; width: 100%; }
+.setup-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.seg button { background: transparent; border: 0; padding: 9px 14px; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--panel-2); color: var(--fg); box-shadow: inset 0 -2px 0 var(--accent); }
+
+/* Pick cards */
+.picks { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: grid; gap: 10px; text-align: left; color: var(--fg); min-width: 0; }
+button.card:hover { border-color: var(--accent); transform: translateY(-2px); }
+button.card { transition: transform .12s, border-color .12s; }
+.card .top { display: grid; grid-template-columns: 84px 1fr; gap: 10px; align-items: center; }
+.sprite { width: 84px; height: 84px; image-rendering: pixelated; object-fit: contain; }
+.sprite.ph { display: grid; place-items: center; background: var(--panel-2); border-radius: 50%; font-family: var(--font-display); color: var(--muted); }
+.name { font-weight: 700; font-size: 17px; line-height: 1.2; }
+.types { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+.type { font-family: var(--font-data); font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; padding: 2px 6px; border-radius: 3px; color: #fff; text-shadow: 0 1px 0 rgba(0,0,0,.35); }
+.stats { display: grid; grid-template-columns: 34px 30px 1fr; gap: 2px 6px; font-family: var(--font-data); font-size: 11px; align-items: center; font-variant-numeric: tabular-nums; }
+.stats .bar { height: 6px; background: var(--panel-2); border-radius: 3px; overflow: hidden; }
+.stats .bar i { display: block; height: 100%; background: var(--muted); }
+.abil { font-size: 13px; }
+.abil b { color: var(--gold); font-weight: 600; }
+.tag { font-family: var(--font-data); font-size: 11px; color: var(--gold); border: 1px solid var(--gold); padding: 1px 6px; border-radius: 3px; }
+
+/* Ability roll */
+.roll { text-align: center; padding-block: 30px; display: grid; gap: 16px; justify-items: center; }
+.slot { font-family: var(--font-display); font-size: clamp(26px, 7vw, 48px); color: var(--gold); min-height: 1.3em; }
+.slot.spin { color: var(--muted); }
+.ab-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; width: 100%; }
+.card.ab { justify-items: center; text-align: center; align-content: start; min-height: 150px; }
+.card.ab .slot { font-size: clamp(20px, 4vw, 26px); }
+.card.ab:disabled { cursor: default; transform: none; }
+.card.ab:not(:disabled):hover, .card.ab[aria-pressed="true"] { border-color: var(--gold); }
+.card.ab[aria-pressed="true"] { background: var(--panel-2); }
+.form-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; width: 100%; }
+button.mini { border: 1px solid transparent; color: var(--fg); }
+button.mini:hover { border-color: var(--muted); }
+button.mini[aria-pressed="true"] { border-color: var(--gold); }
+.roll .strip { width: 100%; text-align: left; }
+
+/* Builder */
+.build { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.build .card .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.build .card .fields .full { grid-column: 1 / -1; }
+.mv { display: grid; grid-template-columns: 1fr auto; gap: 6px; align-items: center; }
+.mv .meta { font-family: var(--font-data); font-size: 10.5px; color: var(--muted); white-space: nowrap; display: flex; gap: 5px; align-items: center; }
+.chk { display: flex; gap: 6px; align-items: center; font-size: 12.5px; color: var(--muted); }
+select { background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 7px 8px; width: 100%; min-width: 0; font-size: 13.5px; }
+.warn { color: var(--warn); font-size: 13px; }
+
+/* Bring select */
+.bring { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.bring .card { position: relative; justify-items: center; text-align: center; padding: 10px; }
+.bring .card[aria-pressed="true"] { border-color: var(--gold); background: var(--panel-2); }
+.bring .ord { position: absolute; top: 6px; left: 8px; font-family: var(--font-display); color: var(--gold); }
+.bring .ord.ban { color: var(--bad); }
+.bring .card.banned { opacity: .45; cursor: not-allowed; }
+.bring .card.banned .sprite { filter: grayscale(1); }
+
+/* Battle */
+.battle { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+@media (max-width: 760px) { .battle { grid-template-columns: 1fr; } }
+.stage { background: linear-gradient(180deg, var(--panel-2), var(--panel)); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: grid; gap: 10px; }
+.fieldbar { display: flex; gap: 6px; flex-wrap: wrap; min-height: 22px; }
+.chip { font-family: var(--font-data); font-size: 11px; padding: 2px 7px; border-radius: 3px; background: var(--panel); border: 1px solid var(--line); color: var(--muted); }
+.mon { display: grid; grid-template-columns: 1fr 110px; gap: 10px; align-items: center; }
+.mon.me { grid-template-columns: 110px 1fr; }
+.mon.me .sprite { transform: scaleX(-1); }
+.mon .sprite { width: 110px; height: 110px; }
+.hud { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; display: grid; gap: 5px; min-width: 0; }
+.hud .l1 { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.hud .l1 .name { font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hp { height: 9px; background: var(--panel-2); border-radius: 5px; overflow: hidden; }
+.hp i { display: block; height: 100%; background: var(--good); transition: width .4s ease; }
+.hp i.mid { background: var(--warn); }
+.hp i.low { background: var(--bad); }
+.hpnum { font-family: var(--font-data); font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.status { font-family: var(--font-data); font-size: 10.5px; padding: 1px 5px; border-radius: 3px; background: var(--bad); color: #fff; text-transform: uppercase; }
+.bench { display: flex; gap: 4px; }
+.bench i { width: 10px; height: 10px; border-radius: 50%; background: var(--good); display: block; }
+.bench i.f { background: var(--line); }
+.controls { display: grid; gap: 10px; }
+.moves { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.move { border: 0; border-radius: 8px; padding: 9px 10px; text-align: left; color: #fff; display: grid; gap: 2px; text-shadow: 0 1px 0 rgba(0,0,0,.35); }
+.move b { font-size: 14.5px; }
+.move span { font-family: var(--font-data); font-size: 10.5px; opacity: .9; }
+.move:disabled { opacity: .35; cursor: not-allowed; }
+.move:not(:disabled):hover { filter: brightness(1.12); }
+.switches { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; }
+.sw { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; display: grid; grid-template-columns: 34px 1fr; gap: 6px; align-items: center; text-align: left; font-size: 13px; }
+.sw img, .sw .sprite { width: 34px; height: 34px; }
+.sw:hover:not(:disabled) { border-color: var(--accent); }
+.sw:disabled { opacity: .35; cursor: not-allowed; }
+.toggle { display: inline-flex; align-items: center; gap: 6px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; font-size: 13px; }
+.toggle[aria-pressed="true"] { border-color: var(--gold); color: var(--gold); }
+.log { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; height: min(560px, 70vh); overflow-y: auto; font-size: 13.5px; display: flex; flex-direction: column; gap: 3px; }
+.log .t { font-family: var(--font-display); color: var(--accent); margin-top: 8px; font-size: 13px; }
+.log .big { color: var(--gold); font-weight: 600; }
+.log .sub { color: var(--muted); }
+.curtain { min-height: 50vh; display: grid; place-content: center; text-align: center; gap: 16px; }
+.curtain h2 { color: var(--gold); }
+.err { color: var(--bad); font-size: 13px; min-height: 1em; }
+.strip { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: grid; gap: 8px; }
+.strip-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
+.mini { display: grid; justify-items: center; gap: 3px; text-align: center; padding: 6px 4px; border-radius: 8px; background: var(--panel-2); min-width: 0; }
+.mini .sprite { width: 56px; height: 56px; }
+.mini .name { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.mini .types { justify-content: center; }
+.mini .tag { font-size: 10px; }
+.mini.empty { background: transparent; border: 1px dashed var(--line); min-height: 90px; place-content: center; color: var(--line); font-family: var(--font-display); font-size: 22px; }
+.saved { display: grid; gap: 12px; }
+#export { width: 100%; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; color: var(--fg); font-family: var(--font-data); font-size: 12px; padding: 10px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<div id="scorebar"></div>
+<main class="wrap" id="app"></main>
+
+<script src="engine.js"></script>
+<script src="sprites.js"></script>
+<script>
+const {Dex, Battle, Teams, POOL, STARTERS, COMMON_ITEMS, megaStonesFor, movepool, learnset, defaultSet} = PK;
+// Abilities that never appear in the rolls
+const BANNED_ABILITIES = ['Wonder Guard', 'Pure Power', 'Huge Power'];
+const ABILITIES = PK.ABILITIES.filter(a => !BANNED_ABILITIES.includes(a));
+const $app = document.getElementById('app');
+const $score = document.getElementById('scorebar');
+const DRAFT_PICKS = 6, OPTIONS = 3, BRING = 6, TEAM = DRAFT_PICKS + 1;
+const TYPE_COLORS = {Normal:'#9a9a78',Fire:'#e2702c',Water:'#4f7de0',Electric:'#d9b01e',Grass:'#5aa93a',Ice:'#5dbdbd',Fighting:'#b8322b',Poison:'#94409a',Ground:'#c9a44e',Flying:'#8f7fe0',Psychic:'#e8517e',Bug:'#91a31f',Rock:'#a8912f',Ghost:'#6a5594',Dragon:'#6a3cf0',Dark:'#6b5647',Steel:'#8f8fae',Fairy:'#d97fa0',Stellar:'#3c7fb0','???':'#607070'};
+const TYPES = Object.keys(TYPE_COLORS).filter(t => t !== '???');
+const SPREADS = {
+  physfast: {label: 'Fast physical (Jolly, 252 Atk / 252 Spe)', nature: 'Jolly', evs: {hp: 4, atk: 252, spe: 252}},
+  physpow: {label: 'Strong physical (Adamant, 252 Atk / 252 Spe)', nature: 'Adamant', evs: {hp: 4, atk: 252, spe: 252}},
+  specfast: {label: 'Fast special (Timid, 252 SpA / 252 Spe)', nature: 'Timid', evs: {hp: 4, spa: 252, spe: 252}},
+  specpow: {label: 'Strong special (Modest, 252 SpA / 252 Spe)', nature: 'Modest', evs: {hp: 4, spa: 252, spe: 252}},
+  physwall: {label: 'Physical wall (Impish, 252 HP / 252 Def)', nature: 'Impish', evs: {hp: 252, def: 252, spd: 4}},
+  specwall: {label: 'Special wall (Calm, 252 HP / 252 SpD)', nature: 'Calm', evs: {hp: 252, def: 4, spd: 252}},
+  balanced: {label: 'Balanced (Hardy, 84 in every stat)', nature: 'Hardy', evs: {hp: 84, atk: 84, def: 84, spa: 84, spd: 84, spe: 84}},
+};
+const STATUS = {brn: 'was burned', par: 'was paralyzed', slp: 'fell asleep', frz: 'was frozen solid', psn: 'was poisoned', tox: 'was badly poisoned'};
+const STAT = {atk: 'Attack', def: 'Defense', spa: 'Sp. Atk', spd: 'Sp. Def', spe: 'Speed', accuracy: 'accuracy', evasion: 'evasion'};
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+const rand = a => a[Math.floor(Math.random() * a.length)];
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const sleep = ms => new Promise(r => setTimeout(r, matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : ms));
+const sp = id => Dex.species.get(id);
+
+function spriteHtml(id, cls = 'sprite') {
+  const s = sp(id);
+  const data = SPRITES[s.id] || SPRITES[Dex.species.get(s.baseSpecies).id];
+  if (data) return `<img class="${cls}" alt="${esc(s.name)}" src="data:image/png;base64,${data}">`;
+  return `<div class="${cls} ph" aria-label="${esc(s.name)}">${esc(s.name.slice(0, 2))}</div>`;
+}
+const typeChips = types => `<div class="types">${types.map(t => `<span class="type" style="background:${TYPE_COLORS[t] || '#666'}">${esc(t)}</span>`).join('')}</div>`;
+function statBlock(id) {
+  const b = sp(id).baseStats; const labels = {hp: 'HP', atk: 'Atk', def: 'Def', spa: 'SpA', spd: 'SpD', spe: 'Spe'};
+  const bst = Object.values(b).reduce((a, c) => a + c, 0);
+  return `<div class="stats">${Object.entries(b).map(([k, v]) => `<span class="muted">${labels[k]}</span><span>${v}</span><span class="bar"><i style="width:${Math.min(100, v / 1.6)}%"></i></span>`).join('')}<span class="muted">BST</span><span>${bst}</span><span></span></div>`;
+}
+const abilDesc = a => Dex.abilities.get(a).shortDesc || Dex.abilities.get(a).desc || '';
+
+// ---------- State ----------
+let S;
+function freshState(mode, names) {
+  return {mode, players: names.map(n => ({name: n, roster: []})), wins: [0, 0], game: 0, gameLog: []};
+}
+const isCpu = i => S.mode === 'cpu' && i === 1;
+
+function renderScore(extra = '') {
+  if (!S) { $score.innerHTML = `<div class="score"><span class="brand">Starter Draft</span><span></span><span></span></div>`; return; }
+  const [a, b] = S.players;
+  $score.innerHTML = `<div class="score"><span class="side">${esc(a.name)}</span><span class="mid">${S.wins[0]} – ${S.wins[1]}<small>${FORMATS[S.format].short}${extra ? ' · ' + extra : ''}</small></span><span class="side r">${esc(b.name)}</span></div>`;
+}
+
+// ---------- Setup ----------
+const FORMATS = {
+  standard: {label: 'Standard Bo3', short: 'STANDARD', blurb: 'Any fully evolved Pokémon with a competitive set.'},
+  mega: {label: 'Mega Bo3', short: 'MEGA', blurb: 'Legendaries, Mythicals and Mega Evolutions only. Megas start already Mega Evolved, no stone needed.'},
+};
+function setup() {
+  S = null; renderScore();
+  let mode = 'friend', format = 'standard';
+  $app.innerHTML = `
+  <section class="hero">
+    <p class="eyebrow">Draft · Build · Best of 3</p>
+    <h1>Draft ${TEAM} random Pokémon, <span>roll their abilities</span>, then battle.</h1>
+    <div class="steps">
+      <div class="step"><b>STEP 1</b>${TEAM} rounds of picks, ${OPTIONS} random options each, from <span id="poolcount"></span> Pokémon.</div>
+      <div class="step"><b>STEP 2</b>Every Pokémon you take rolls 3 random abilities from any Pokémon. Keep one.</div>
+      <div class="step"><b>STEP 3</b>Set moves, items, Tera or Mega. Bring ${BRING} of your ${TEAM} to each game. Lose a game and you ban one of the winner's Pokémon.</div>
+    </div>
+  </section>
+  <section class="stack" style="margin-top:20px">
+    <div class="stack" style="gap:6px"><span class="eyebrow">Game mode</span>
+      <div class="row"><span class="seg" role="group" aria-label="Game mode">${Object.entries(FORMATS).map(([k, f]) => `<button id="f-${k}" aria-pressed="${k === format}">${esc(f.label)}</button>`).join('')}</span></div>
+      <p class="muted" id="fblurb"></p></div>
+    <div class="stack" style="gap:6px"><span class="eyebrow">Opponent</span>
+    <div class="row"><span class="seg" role="group" aria-label="Opponent">
+      <button id="m-friend" aria-pressed="true">Friend on this device</button><button id="m-cpu" aria-pressed="false">Vs CPU</button></span></div></div>
+    <div class="setup-grid">
+      <div class="field"><label for="n1">Player 1</label><input id="n1" value="Jake" maxlength="18"></div>
+      <div class="field"><label for="n2">Player 2</label><input id="n2" value="Challenger" maxlength="18"></div>
+    </div>
+    <div class="row"><button class="btn" id="go">Start draft</button><span class="muted">Level 50, Gen 9 mechanics, Showdown's battle engine.</span></div>
+  </section>`;
+  const setFormat = f => {
+    format = f; setPool(f);
+    for (const k of Object.keys(FORMATS)) document.getElementById('f-' + k).setAttribute('aria-pressed', k === f);
+    document.getElementById('fblurb').textContent = FORMATS[f].blurb;
+    document.getElementById('poolcount').textContent = Object.keys(GROUP).length;
+  };
+  for (const k of Object.keys(FORMATS)) document.getElementById('f-' + k).onclick = () => setFormat(k);
+  setFormat('standard');
+  const setMode = m => { mode = m; document.getElementById('m-friend').setAttribute('aria-pressed', m === 'friend'); document.getElementById('m-cpu').setAttribute('aria-pressed', m === 'cpu'); document.getElementById('n2').value = m === 'cpu' ? 'CPU' : 'Challenger'; };
+  document.getElementById('m-friend').onclick = () => setMode('friend');
+  document.getElementById('m-cpu').onclick = () => setMode('cpu');
+  document.getElementById('go').onclick = () => {
+    let n1 = document.getElementById('n1').value.trim() || 'Player 1';
+    let n2 = document.getElementById('n2').value.trim() || 'Player 2';
+    if (n1 === n2) n2 += ' 2';
+    S = freshState(mode, [n1, n2]);
+    S.format = format; setPool(format);
+    runDraft();
+  };
+}
+
+// ---------- Generic screens ----------
+function curtain(title, sub, btn = 'Ready') {
+  return new Promise(res => {
+    $app.innerHTML = `<section class="curtain"><p class="eyebrow">${esc(sub)}</p><h2>${esc(title)}</h2><div><button class="btn" id="ok">${esc(btn)}</button></div></section>`;
+    document.getElementById('ok').onclick = res; document.getElementById('ok').focus();
+  });
+}
+function monCard(id, extra = '', tag = 'button') {
+  const s = sp(id);
+  return `<${tag} class="card" data-id="${s.id}"><div class="top">${spriteHtml(id)}<div><div class="name">${esc(s.name)}</div>${typeChips(s.types)}</div></div>${statBlock(id)}${extra}</${tag}>`;
+}
+function teamStrip(pl) {
+  if (!pl || !pl.roster.length) return '';
+  const slots = Array.from({length: DRAFT_PICKS + 1}, (_, k) => pl.roster[k]);
+  return `<div class="strip"><p class="eyebrow">Your team · ${pl.roster.length}/${DRAFT_PICKS + 1}</p><div class="strip-row">${slots.map(e => e
+    ? `<div class="mini">${spriteHtml(e.id)}<span class="name">${esc(sp(e.id).name)}</span>${typeChips(sp(e.id).types)}${e.rolled ? `<span class="tag">${esc(e.ability)}</span>` : ''}</div>`
+    : `<div class="mini empty"><span>?</span></div>`).join('')}</div></div>`;
+}
+function choose(title, sub, ids, extraFn, pl) {
+  return new Promise(res => {
+    $app.innerHTML = `<section class="stack"><div><p class="eyebrow">${esc(sub)}</p><h2>${esc(title)}</h2></div><div class="picks">${ids.map(id => monCard(id, extraFn ? extraFn(id) : '')).join('')}</div>${teamStrip(pl)}</section>`;
+    $app.querySelectorAll('.picks .card').forEach(c => c.onclick = () => res(c.dataset.id));
+  });
+}
+
+// ---------- Saved teams (this browser only) ----------
+const SAVE_KEY = 'starter-draft-teams';
+function loadSaved() { try { return JSON.parse(localStorage.getItem(SAVE_KEY)) || []; } catch { return []; } }
+function writeSaved(list) { try { localStorage.setItem(SAVE_KEY, JSON.stringify(list)); return true; } catch { return false; } }
+function saveTeam(pl) {
+  const list = loadSaved();
+  const label = `${sp(pl.roster[0].id).name} team · ${new Date().toLocaleDateString('en-GB', {day: 'numeric', month: 'short'})}`;
+  list.unshift({label, owner: pl.name, roster: JSON.parse(JSON.stringify(pl.roster))});
+  return writeSaved(list.slice(0, 30));
+}
+function showdownText(roster) { return Teams.export(roster.map(toSet)); }
+async function copyText(text, btn) {
+  const old = btn.textContent;
+  try { await navigator.clipboard.writeText(text); btn.textContent = 'Copied'; }
+  catch { btn.textContent = 'Copy blocked, text shown below'; const ta = document.getElementById('export'); ta.hidden = false; ta.value = text; ta.select(); }
+  setTimeout(() => btn.textContent = old, 1800);
+}
+function pickSaved(pl) {
+  return new Promise(res => {
+    const draw = () => {
+      const list = loadSaved();
+      if (!list.length) return res(null);
+      $app.innerHTML = `<section class="stack"><div><p class="eyebrow">${esc(pl.name)}</p><h2>Draft or use a saved team</h2></div>
+        <div class="row"><button class="btn" id="new">Draft a new team</button></div>
+        <div class="saved">${list.map((t, k) => `<div class="card"><div class="row" style="justify-content:space-between"><div><div class="name">${esc(t.label)}</div><div class="muted" style="font-size:13px">Saved by ${esc(t.owner)}</div></div>
+          <div class="row"><button class="btn" data-use="${k}">Use</button><button class="btn ghost" data-del="${k}">Delete</button></div></div>
+          <div class="strip-row">${t.roster.map(e => `<div class="mini">${spriteHtml(e.id)}<span class="name">${esc(sp(e.id).name)}</span></div>`).join('')}</div></div>`).join('')}</div></section>`;
+      document.getElementById('new').onclick = () => res(null);
+      $app.querySelectorAll('[data-use]').forEach(b => b.onclick = () => res(JSON.parse(JSON.stringify(list[+b.dataset.use].roster))));
+      $app.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { list.splice(+b.dataset.del, 1); writeSaved(list); draw(); });
+    };
+    draw();
+  });
+}
+const normalAbils = id => Object.values(sp(id).abilities).map(a => `<div class="abil muted">${esc(a)}</div>`).join('');
+
+// ---------- Draft ----------
+// Forms (Arceus types, regional variants, Rotom appliances...) share one pool slot; the form is chosen after picking
+const baseOf = id => sp(sp(id).baseSpecies).id;
+const isLegendary = id => sp(id).tags.some(t => t === 'Sub-Legendary' || t === 'Restricted Legendary' || t === 'Mythical');
+const MEGAS = Dex.species.all().filter(s => s.isMega && s.exists && s.isNonstandard !== 'CAP' && s.isNonstandard !== 'Custom').map(s => s.id);
+const POOLS = {
+  standard: POOL,
+  mega: [...POOL.filter(isLegendary), ...MEGAS],
+};
+let GROUP = {};
+function setPool(format) {
+  GROUP = {};
+  for (const id of POOLS[format]) (GROUP[baseOf(id)] ||= []).push(id);
+}
+setPool('standard');
+const repOf = base => GROUP[base].includes(base) ? base : GROUP[base][0];
+const formsOf = id => GROUP[baseOf(id)] || [id];
+const formsNote = id => { const f = formsOf(id); return f.length > 1 ? `<div class="abil"><span class="tag">${f.length} FORMS</span> <span class="muted">choose after picking</span></div>` : ''; };
+
+function starterOptions() {
+  const bases = [...new Set(STARTERS.map(baseOf))];
+  const pick = [];
+  for (const t of ['Grass', 'Fire', 'Water']) {
+    const c = shuffle(bases).find(b => !pick.includes(b) && formsOf(b).some(f => sp(f).types.includes(t)));
+    if (c) pick.push(c);
+  }
+  return pick.map(b => { const f = formsOf(b).filter(x => STARTERS.includes(x)); return f.includes(b) ? b : f[0]; });
+}
+function draftOptions(owned) {
+  const ownedBases = owned.map(baseOf);
+  return shuffle(Object.keys(GROUP).filter(b => !ownedBases.includes(b))).slice(0, OPTIONS).map(repOf);
+}
+// Megas drafted directly have no Random Battle set of their own: borrow the base form's moves, never a stone
+const mpool = id => { const m = movepool(sp(id).isMega ? baseOf(id) : id); return m.length ? m : learnset(id); };
+function newEntry(id, ability, rolled) {
+  const s = sp(id), b = s.baseStats;
+  let d;
+  try { d = defaultSet(id); } catch { d = {moves: [], item: 'Leftovers', teraType: s.types[0]}; }
+  if (s.isMega) { if (!d.moves.filter(Boolean).length) d.moves = mpool(id).slice(0, 4); if (Dex.items.get(d.item).megaStone) d.item = 'Leftovers'; }
+  let spread = b.atk >= b.spa ? (b.spe >= 90 ? 'physfast' : 'physpow') : (b.spe >= 90 ? 'specfast' : 'specpow');
+  if (Math.max(b.atk, b.spa) < 80) spread = b.def >= b.spd ? 'physwall' : 'specwall';
+  const moves = [...d.moves]; while (moves.length < 4) moves.push('');
+  const tera = TYPES.includes(d.teraType) ? d.teraType : s.types[0];
+  return {id, ability: ability || d.ability || s.abilities[0], rolled: !!rolled, moves, item: d.item || 'Leftovers', tera, spread, full: false};
+}
+
+// Never offer an ability already on this player's team (or in `also`, e.g. the set being rerolled)
+const abilityOptions = (pl, also = []) => {
+  const taken = new Set([...(pl?.roster || []).map(e => e.ability), ...also]);
+  return shuffle(ABILITIES.filter(a => !taken.has(a))).slice(0, 3);
+};
+async function rollAbility(pl, picked) {
+  let finals = abilityOptions(pl);
+  const forms = formsOf(picked);
+  let form = picked, ability = null;
+  $app.innerHTML = `<section class="roll"><p class="eyebrow">${esc(pl.name)} · ${forms.length > 1 ? 'Form and ability' : 'Ability roll'}</p><div id="rsprite">${spriteHtml(form)}</div><h2 id="rhead">Choose an ability for ${esc(sp(form).name)}</h2>
+    ${forms.length > 1 ? `<div class="form-row">${forms.map(f => `<button class="mini form" data-form="${f}" aria-pressed="${f === form}">${spriteHtml(f)}<span class="name">${esc(sp(f).name)}</span>${typeChips(sp(f).types)}</button>`).join('')}</div>` : ''}
+    <div class="ab-choices">${finals.map((_, k) => `<button class="card ab" id="ab${k}" disabled><span class="slot spin">?</span><span class="muted"></span></button>`).join('')}</div>
+    <div class="row" style="justify-content:center">${forms.length > 1 ? `<button class="btn" id="confirm" disabled>Pick a form and an ability</button>` : ''}<button class="btn ghost" id="reroll" hidden></button></div>
+    ${teamStrip(pl)}</section>`;
+  const head = document.getElementById('rhead'), spr = document.getElementById('rsprite'), confirm = document.getElementById('confirm'), reroll = document.getElementById('reroll');
+  const refresh = () => {
+    head.textContent = `Choose an ability for ${sp(form).name}`;
+    spr.innerHTML = spriteHtml(form);
+    if (confirm) { confirm.disabled = !ability; confirm.textContent = ability ? `Take ${sp(form).name} with ${ability}` : 'Pick an ability'; }
+  };
+  $app.querySelectorAll('[data-form]').forEach(b => b.onclick = () => {
+    form = b.dataset.form;
+    $app.querySelectorAll('[data-form]').forEach(x => x.setAttribute('aria-pressed', x === b));
+    refresh();
+  });
+  const cards = finals.map((_, k) => document.getElementById('ab' + k));
+  const spin = async () => {
+    reroll.hidden = true;
+    cards.forEach(c => { c.disabled = true; c.setAttribute('aria-pressed', 'false'); c.firstChild.classList.add('spin'); c.lastChild.textContent = ''; });
+    for (let i = 0; i <= 14 + (finals.length - 1) * 6; i++) {
+      cards.forEach((c, k) => { if (i < 14 + k * 6) c.firstChild.textContent = rand(ABILITIES); });
+      cards.forEach((c, k) => { if (i === 14 + k * 6) { c.firstChild.textContent = finals[k]; c.firstChild.classList.remove('spin'); c.lastChild.textContent = abilDesc(finals[k]); } });
+      await sleep(40 + i * 5);
+    }
+    cards.forEach(c => c.disabled = false); cards[0].focus();
+    reroll.hidden = !(pl.rerolls > 0);
+    reroll.textContent = `Reroll these 3 (${pl.rerolls} left this draft)`;
+  };
+  reroll.onclick = async () => {
+    if (!(pl.rerolls > 0)) return;
+    pl.rerolls--;
+    finals = abilityOptions(pl, finals);
+    ability = null; refresh();
+    await spin();
+  };
+  await spin();
+  return new Promise(res => {
+    cards.forEach((c, k) => c.onclick = () => {
+      ability = finals[k];
+      if (!confirm) return res({id: form, ability});
+      cards.forEach(x => x.setAttribute('aria-pressed', x === c));
+      refresh();
+    });
+    if (confirm) confirm.onclick = () => res({id: form, ability});
+  });
+}
+
+async function draftFor(i) {
+  const pl = S.players[i];
+  pl.roster = [];
+  if (isCpu(i)) {
+    for (let k = 0; k < TEAM; k++) {
+      const id = rand(draftOptions(pl.roster.map(r => r.id)));
+      pl.roster.push(newEntry(rand(formsOf(id)), rand(abilityOptions(pl)), true));
+    }
+    return;
+  }
+  pl.rerolls = 1;
+  if (S.mode === 'friend') await curtain(`${pl.name}, your draft`, 'Hand the device over', 'Start my draft');
+  const saved = await pickSaved(pl);
+  if (saved) { pl.roster = saved; await builder(i); return; }
+  for (let k = 0; k < TEAM; k++) {
+    const owned = pl.roster.map(r => r.id);
+    const id = await choose(`Pick ${k + 1} of ${TEAM}`, `${pl.name} · ${pl.roster.length} Pokémon so far`, draftOptions(owned), formsNote, pl);
+    const r = await rollAbility(pl, id);
+    pl.roster.push(newEntry(r.id, r.ability, true));
+  }
+  await builder(i);
+}
+
+async function runDraft() {
+  renderScore('DRAFT');
+  await draftFor(0);
+  await draftFor(1);
+  await playMatch();
+}
+
+// ---------- Team builder ----------
+function moveMeta(name) {
+  if (!name) return '';
+  const m = Dex.moves.get(name);
+  return `<span class="type" style="background:${TYPE_COLORS[m.type] || '#666'}">${esc(m.type)}</span> ${m.category === 'Status' ? 'Status' : (m.basePower || '—') + ' ' + (m.category === 'Physical' ? 'Phys' : 'Spec')}`;
+}
+const moveColor = name => name ? TYPE_COLORS[Dex.moves.get(name).type] || 'var(--line)' : 'var(--line)';
+function builderCard(e, idx) {
+  const s = sp(e.id);
+  const pool = e.full ? learnset(e.id) : mpool(e.id);
+  const allMoves = [...new Set([...pool, ...e.moves.filter(Boolean)])].sort();
+  const megas = megaStonesFor(e.id);
+  const isMega = megas.includes(e.item);
+  const itemOpts = [...new Set([...megas, e.item, ...COMMON_ITEMS])].filter(Boolean);
+  const abilSel = e.rolled
+    ? `<div class="full abil">Ability: <b>${esc(e.ability)}</b> <span class="tag">ROLLED</span><div class="muted">${esc(abilDesc(e.ability))}</div></div>`
+    : `<div class="field full"><label for="ab-${idx}">Ability</label><select id="ab-${idx}" data-k="ability">${Object.values(s.abilities).map(a => `<option ${a === e.ability ? 'selected' : ''}>${esc(a)}</option>`).join('')}</select></div>`;
+  return `<div class="card" data-idx="${idx}">
+    <div class="top">${spriteHtml(e.id)}<div><div class="name">${esc(s.name)}</div>${typeChips(s.types)}</div></div>
+    <div class="fields">
+      ${abilSel}
+      ${e.moves.map((m, j) => `<div class="mv full"><select id="mv-${idx}-${j}" data-k="move" data-j="${j}" aria-label="Move ${j + 1}" style="border-left:6px solid ${moveColor(m)}"><option value="">—</option>${allMoves.map(x => `<option style="background:${moveColor(x)};color:#fff" ${x === m ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select><span class="meta">${moveMeta(m)}</span></div>`).join('')}
+      <label class="chk full"><input type="checkbox" id="full-${idx}" data-k="full" ${e.full ? 'checked' : ''}> Show full learnset (${learnset(e.id).length} moves)</label>
+      <div class="field"><label for="it-${idx}">Item</label><select id="it-${idx}" data-k="item">${megas.length ? `<optgroup label="Mega Stone">${megas.map(x => `<option ${x === e.item ? 'selected' : ''}>${esc(x)}</option>`).join('')}</optgroup>` : ''}<optgroup label="Items">${itemOpts.filter(x => !megas.includes(x)).map(x => `<option ${x === e.item ? 'selected' : ''}>${esc(x)}</option>`).join('')}</optgroup></select></div>
+      <div class="field"><label for="te-${idx}">Tera type</label><select id="te-${idx}" data-k="tera" ${isMega ? 'disabled' : ''}>${isMega ? '<option>Mega instead</option>' : TYPES.map(t => `<option ${t === e.tera ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+      <div class="field full"><label for="sp-${idx}">EVs and nature</label><select id="sp-${idx}" data-k="spread">${Object.entries(SPREADS).map(([k, v]) => `<option value="${k}" ${k === e.spread ? 'selected' : ''}>${esc(v.label)}</option>`).join('')}</select></div>
+    </div></div>`;
+}
+function rosterProblems(roster) {
+  const out = [];
+  roster.forEach(e => {
+    const mv = e.moves.filter(Boolean);
+    if (!mv.length) out.push(`${sp(e.id).name} needs at least one move.`);
+    if (new Set(mv).size !== mv.length) out.push(`${sp(e.id).name} has the same move twice.`);
+  });
+  return out;
+}
+function builder(i) {
+  const pl = S.players[i];
+  return new Promise(res => {
+    const draw = () => {
+      const probs = rosterProblems(pl.roster);
+      $app.innerHTML = `<section class="stack"><div class="row" style="justify-content:space-between"><div><p class="eyebrow">${esc(pl.name)} · Team builder</p><h2>Set up your ${TEAM}</h2><p class="muted">Movesets start from Showdown's Random Battle sets. A Mega Stone replaces Tera for that Pokémon, and only one Mega per game can evolve.</p></div></div>
+      <div class="build">${pl.roster.map(builderCard).join('')}</div>
+      <div class="row"><button class="btn" id="lock" ${probs.length ? 'disabled' : ''}>Lock in team</button><button class="btn ghost" id="save" ${probs.length ? 'disabled' : ''}>Save team</button><button class="btn ghost" id="copy">Copy as Showdown text</button><span class="warn">${probs.map(esc).join(' ')}</span></div>
+      <textarea id="export" hidden readonly rows="10" aria-label="Showdown team text"></textarea></section>`;
+      $app.querySelectorAll('.build .card').forEach(card => {
+        const e = pl.roster[+card.dataset.idx];
+        card.querySelectorAll('[data-k]').forEach(el => el.onchange = () => {
+          const k = el.dataset.k;
+          if (k === 'move') e.moves[+el.dataset.j] = el.value;
+          else if (k === 'full') e.full = el.checked;
+          else if (k === 'tera') e.tera = el.value;
+          else e[k] = el.value;
+          const y = scrollY; draw(); scrollTo(0, y);
+          document.getElementById(el.id)?.focus();
+        });
+      });
+      document.getElementById('lock').onclick = res;
+      const sv = document.getElementById('save');
+      sv.onclick = () => { sv.textContent = saveTeam(pl) ? 'Saved to this browser' : "Couldn't save here"; sv.disabled = true; };
+      const cp = document.getElementById('copy');
+      cp.onclick = () => copyText(showdownText(pl.roster), cp);
+    };
+    draw();
+  });
+}
+
+// ---------- Match ----------
+function toSet(e) {
+  const sprd = SPREADS[e.spread];
+  const evs = {hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0, ...sprd.evs};
+  const isMega = megaStonesFor(e.id).includes(e.item);
+  return {name: sp(e.id).name, species: sp(e.id).name, item: e.item, ability: e.ability, moves: e.moves.filter(Boolean),
+    nature: sprd.nature, evs, ivs: {hp: 31, atk: 31, def: 31, spa: 31, spd: 31, spe: 31}, level: 50, gender: '',
+    teraType: isMega ? sp(e.id).types[0] : e.tera};
+}
+
+function bringSelect(i) {
+  const pl = S.players[i];
+  const banned = S.bans[i];
+  const avail = pl.roster.filter((_, k) => !banned.includes(k));
+  const need = Math.min(BRING, avail.length);
+  if (isCpu(i)) return Promise.resolve(shuffle(avail).slice(0, need));
+  return new Promise(res => {
+    let order = [];
+    const draw = () => {
+      $app.innerHTML = `<section class="stack"><div><p class="eyebrow">${esc(pl.name)} · Game ${S.game}</p><h2>Bring ${need} of ${avail.length}</h2><p class="muted">Tap in the order you want them. Your first pick leads.${banned.length ? ' Banned Pokémon sit out the rest of the match.' : ''}</p></div>
+      <div class="bring">${pl.roster.map((e, k) => { const n = order.indexOf(k); const ban = banned.includes(k); return `<button class="card${ban ? ' banned' : ''}" data-k="${k}" aria-pressed="${n >= 0}" ${ban ? 'disabled' : ''}>${ban ? '<span class="ord ban">BANNED</span>' : n >= 0 ? `<span class="ord">${n === 0 ? 'LEAD' : n + 1}</span>` : ''}${spriteHtml(e.id)}<div class="name" style="font-size:14px">${esc(sp(e.id).name)}</div><div class="muted" style="font-size:12px">${esc(e.item)}</div></button>`; }).join('')}</div>
+      <div class="row"><button class="btn" id="go" ${order.length !== need ? 'disabled' : ''}>Lock in ${order.length}/${need}</button><button class="btn ghost" id="clr">Clear</button></div></section>`;
+      $app.querySelectorAll('.bring .card:not(:disabled)').forEach(c => c.onclick = () => {
+        const k = +c.dataset.k, n = order.indexOf(k);
+        if (n >= 0) order.splice(n, 1); else if (order.length < need) order.push(k);
+        draw();
+      });
+      document.getElementById('clr').onclick = () => { order = []; draw(); };
+      document.getElementById('go').onclick = () => res(order.map(k => pl.roster[k]));
+    };
+    draw();
+  });
+}
+
+// Loser of a game bans one of the winner's Pokémon for the rest of the match
+function banSelect(loser, winner) {
+  const opp = S.players[winner];
+  const options = opp.roster.map((e, k) => k).filter(k => !S.bans[winner].includes(k));
+  if (isCpu(loser)) return Promise.resolve(rand(options));
+  return new Promise(res => {
+    $app.innerHTML = `<section class="stack"><div><p class="eyebrow">${esc(opp.name)} takes game ${S.game} · Score ${S.wins[0]} – ${S.wins[1]}</p><h2>${esc(S.players[loser].name)}, ban one of ${esc(opp.name)}'s Pokémon</h2><p class="muted">It sits out for the rest of the match.</p></div>
+      <div class="bring">${options.map(k => { const e = opp.roster[k]; return `<button class="card" data-k="${k}">${spriteHtml(e.id)}<div class="name" style="font-size:14px">${esc(sp(e.id).name)}</div><div class="muted" style="font-size:12px">${esc(e.ability)}</div></button>`; }).join('')}</div></section>`;
+    $app.querySelectorAll('.bring .card').forEach(c => c.onclick = () => res(+c.dataset.k));
+  });
+}
+
+async function playMatch() {
+  S.wins = [0, 0]; S.game = 0; S.bans = [[], []];
+  while (S.wins[0] < 2 && S.wins[1] < 2) {
+    S.game++;
+    renderScore(`GAME ${S.game}`);
+    const teams = [];
+    for (const i of [0, 1]) {
+      if (S.mode === 'friend') await curtain(`${S.players[i].name}, pick your ${BRING}`, `Game ${S.game} · hand the device over`, 'Choose team');
+      teams.push(await bringSelect(i));
+    }
+    const winner = await playGame(teams);
+    if (winner < 0) { await curtain('Tie game', `Both sides went down together. Game ${S.game} will be replayed.`, 'Replay game'); S.game--; continue; }
+    S.wins[winner]++;
+    renderScore(`GAME ${S.game}`);
+    if (S.wins[0] < 2 && S.wins[1] < 2) {
+      const loser = 1 - winner;
+      const k = await banSelect(loser, winner);
+      S.bans[winner].push(k);
+      await curtain(`${sp(S.players[winner].roster[k].id).name} is banned`, `${S.players[loser].name} banned it from ${S.players[winner].name}'s team`, `Start game ${S.game + 1}`);
+    }
+  }
+  const w = S.wins[0] > S.wins[1] ? 0 : 1;
+  renderScore('FINAL');
+  $app.innerHTML = `<section class="curtain"><p class="eyebrow">Best of 3 · Final</p><h2>${esc(S.players[w].name)} wins ${Math.max(...S.wins)}–${Math.min(...S.wins)}</h2>
+    <div class="row" style="justify-content:center"><button class="btn" id="re">Rematch with same teams</button><button class="btn ghost" id="nd">New draft</button></div></section>`;
+  document.getElementById('re').onclick = () => playMatch();
+  document.getElementById('nd').onclick = () => setup();
+}
+
+// ---------- Battle ----------
+let B, logIdx, $log;
+const sideIdx = sid => sid === 'p1' ? 0 : 1;
+function monLabel(ident) {
+  const [pos, nick] = ident.split(': ');
+  return `${S.players[sideIdx(pos.slice(0, 2))].name}'s ${nick}`;
+}
+function fromTag(parts) {
+  const f = parts.find(p => p.startsWith('[from]'));
+  if (!f) return '';
+  return ` (${f.replace('[from] ', '').replace(/^(item|ability|move): /, '')})`;
+}
+function hpPct(s) { const [a, b] = s.split(' ')[0].split('/'); return b ? Math.round(100 * a / b) : 0; }
+
+function describe(line) {
+  const p = line.split('|').slice(1);
+  const [cmd, a, b, c] = p;
+  switch (cmd) {
+    case 'turn': return {t: `Turn ${a}`, cls: 't'};
+    case 'switch': case 'drag': return {t: `${S.players[sideIdx(a.slice(0, 2))].name} sent out ${b.split(',')[0]}.`};
+    case 'move': return {t: `${monLabel(a)} used ${b}!`, cls: 'big'};
+    case '-damage': return {t: `${monLabel(a)} → ${c === undefined && b.includes('fnt') ? 0 : hpPct(b)}% HP${fromTag(p)}`, cls: 'sub'};
+    case '-heal': return {t: `${monLabel(a)} restored HP → ${hpPct(b)}%${fromTag(p)}`, cls: 'sub'};
+    case 'faint': return {t: `${monLabel(a)} fainted!`, cls: 'big'};
+    case '-supereffective': return {t: `It's super effective!`};
+    case '-resisted': return {t: `It's not very effective…`, cls: 'sub'};
+    case '-immune': return {t: `It doesn't affect ${monLabel(a)}${fromTag(p)}.`};
+    case '-crit': return {t: `A critical hit!`};
+    case '-miss': return {t: `${monLabel(a)}'s attack missed!`};
+    case '-fail': return {t: `But it failed!`, cls: 'sub'};
+    case '-status': return {t: `${monLabel(a)} ${STATUS[b] || b}${fromTag(p)}.`};
+    case '-curestatus': return {t: `${monLabel(a)} is no longer affected by ${b}.`, cls: 'sub'};
+    case '-boost': return {t: `${monLabel(a)}'s ${STAT[b] || b} rose${+c > 1 ? ` by ${c}` : ''}${fromTag(p)}.`, cls: 'sub'};
+    case '-unboost': return {t: `${monLabel(a)}'s ${STAT[b] || b} fell${+c > 1 ? ` by ${c}` : ''}${fromTag(p)}.`, cls: 'sub'};
+    case '-ability': return {t: `[${monLabel(a)}'s ${b}]`, cls: 'sub'};
+    case '-item': return {t: `${monLabel(a)} has ${b}${fromTag(p)}.`, cls: 'sub'};
+    case '-enditem': return {t: `${monLabel(a)}'s ${b} was used up.`, cls: 'sub'};
+    case '-weather': return p.includes('[upkeep]') ? null : {t: b === 'none' || a === 'none' ? 'The weather cleared.' : `Weather: ${a.replace(/([a-z])([A-Z])/g, '$1 $2')}${fromTag(p)}.`};
+    case '-fieldstart': return {t: `${a.replace('move: ', '')} took effect.`};
+    case '-fieldend': return {t: `${a.replace('move: ', '')} wore off.`, cls: 'sub'};
+    case '-sidestart': return {t: `${a.split(': ')[1]}'s side: ${b.replace('move: ', '')}.`};
+    case '-sideend': return {t: `${a.split(': ')[1]}'s ${b.replace('move: ', '')} ended.`, cls: 'sub'};
+    case '-start': return {t: `${monLabel(a)}: ${b.replace('move: ', '')}${c && !c.startsWith('[') ? ' ' + c : ''}${fromTag(p)}.`, cls: 'sub'};
+    case '-end': return {t: `${monLabel(a)}: ${b.replace('move: ', '')} ended.`, cls: 'sub'};
+    case '-activate': return {t: `${monLabel(a)}: ${b.replace(/^(move|ability|item): /, '')}!`, cls: 'sub'};
+    case 'cant': return {t: `${monLabel(a)} can't move (${b.replace(/^(move|ability): /, '')}).`};
+    case '-mega': return {t: `${monLabel(a)} Mega Evolved!`, cls: 'big'};
+    case '-terastallize': return {t: `${monLabel(a)} Terastallized into the ${b} type!`, cls: 'big'};
+    case '-transform': return {t: `${monLabel(a)} transformed!`};
+    case '-message': return {t: a};
+    case 'win': return {t: `${a} won the game!`, cls: 't'};
+    default: return null;
+  }
+}
+
+async function revealLog() {
+  const lines = B.log.slice(logIdx); logIdx = B.log.length;
+  for (let k = 0; k < lines.length; k++) {
+    if (lines[k].startsWith('|split|')) { k++; continue; }
+    const d = describe(lines[k]);
+    if (!d) continue;
+    const el = document.createElement('div'); el.textContent = d.t; if (d.cls) el.className = d.cls;
+    $log.appendChild(el); $log.scrollTop = $log.scrollHeight;
+    if (d.cls === 'big' || d.cls === 't') await sleep(260); else await sleep(90);
+  }
+}
+
+function hudHtml(side, mine) {
+  const m = side.active[0];
+  if (!m) return '';
+  const pct = Math.max(0, Math.round(100 * m.hp / m.maxhp));
+  const cls = pct <= 20 ? 'low' : pct <= 50 ? 'mid' : '';
+  const boosts = Object.entries(m.boosts).filter(([, v]) => v).map(([k, v]) => `<span class="chip">${STAT[k] || k} ${v > 0 ? '+' : ''}${v}</span>`).join('');
+  const bench = side.pokemon.map(p => `<i class="${p.fainted ? 'f' : ''}" title="${esc(p.species.name)}"></i>`).join('');
+  return `<div class="hud"><div class="l1"><span class="name">${esc(m.species.name)}</span><span class="hpnum">${mine ? `${m.hp}/${m.maxhp}` : pct + '%'}</span></div>
+    <div class="hp"><i class="${cls}" style="width:${pct}%"></i></div>
+    <div class="row" style="gap:5px">${typeChips(m.getTypes())}${m.status ? `<span class="status">${m.status}</span>` : ''}${m.terastallized ? `<span class="chip" style="color:var(--gold)">Tera ${esc(m.terastallized)}</span>` : ''}${boosts}</div>
+    <div class="row" style="justify-content:space-between"><span class="muted" style="font-size:12px">${esc(side.name)} · ${esc(m.getAbility().name)}</span><span class="bench">${bench}</span></div></div>`;
+}
+function stageHtml(viewer) {
+  const me = B[viewer], foe = B[viewer === 'p1' ? 'p2' : 'p1'];
+  const chips = [];
+  if (B.field.weather) chips.push(Dex.conditions.get(B.field.weather).name);
+  if (B.field.terrain) chips.push(Dex.conditions.get(B.field.terrain).name);
+  for (const k of Object.keys(B.field.pseudoWeather)) chips.push(Dex.conditions.get(k).name);
+  for (const [who, s] of [['Foe', foe], ['You', me]]) for (const k of Object.keys(s.sideConditions)) chips.push(`${who}: ${Dex.conditions.get(k).name}`);
+  return `<div class="stage">
+    <div class="fieldbar">${chips.map(c => `<span class="chip">${esc(c)}</span>`).join('')}</div>
+    <div class="mon">${hudHtml(foe, false)}${foe.active[0] ? spriteHtml(foe.active[0].species.id) : ''}</div>
+    <div class="mon me">${me.active[0] ? spriteHtml(me.active[0].species.id) : ''}${hudHtml(me, true)}</div>
+  </div>`;
+}
+
+function battleShell(viewer, controls) {
+  const keep = $log;
+  $app.innerHTML = `<section class="battle"><div class="stack"><div id="stage">${stageHtml(viewer)}</div><div class="controls" id="controls">${controls}</div></div><div class="log" id="log" aria-live="polite"></div></section>`;
+  const fresh = document.getElementById('log');
+  if (keep) { fresh.replaceWith(keep); } else { $log = fresh; }
+}
+
+function controlsHtml(sid) {
+  const req = B[sid].activeRequest;
+  const act = req.active?.[0];
+  let html = `<div class="row" style="justify-content:space-between"><h3>${esc(S.players[sideIdx(sid)].name)}: ${req.forceSwitch ? 'choose a replacement' : 'what will you do?'}</h3></div>`;
+  if (!req.forceSwitch && act) {
+    html += `<div class="row">${act.canMegaEvo ? `<button class="toggle" id="t-mega" aria-pressed="false">Mega Evolve</button>` : ''}${act.canTerastallize ? `<button class="toggle" id="t-tera" aria-pressed="false">Terastallize (${esc(act.canTerastallize)})</button>` : ''}</div>`;
+    html += `<div class="moves">${act.moves.map((m, k) => { const mv = Dex.moves.get(m.id); const col = TYPE_COLORS[mv.type] || '#555';
+      return `<button class="move" data-move="${k + 1}" style="background:${col}" ${m.disabled ? 'disabled' : ''}><b>${esc(m.move)}</b><span>${esc(mv.type)} · ${mv.category === 'Status' ? 'Status' : (mv.basePower || '—') + ' BP'}${m.maxpp ? ` · ${m.pp}/${m.maxpp} PP` : ''}</span></button>`; }).join('')}</div>`;
+  }
+  const trapped = !req.forceSwitch && act?.trapped;
+  html += `<div class="eyebrow">${trapped ? 'Trapped — cannot switch' : 'Switch'}</div><div class="switches">${req.side.pokemon.map((p, k) => {
+    const fnt = p.condition.endsWith('fnt'); const s = sp(p.details.split(',')[0]);
+    return `<button class="sw" data-sw="${k + 1}" ${p.active || fnt || trapped ? 'disabled' : ''}>${spriteHtml(s.id)}<span>${esc(s.name)}<br><span class="hpnum">${fnt ? 'fainted' : hpPct(p.condition) + '%'}</span></span></button>`; }).join('')}</div><div class="err" id="err"></div>`;
+  return html;
+}
+
+function humanChoice(sid) {
+  return new Promise(res => {
+    battleShell(sid, controlsHtml(sid));
+    let mega = false, tera = false;
+    const tm = document.getElementById('t-mega'), tt = document.getElementById('t-tera');
+    if (tm) tm.onclick = () => { mega = !mega; tm.setAttribute('aria-pressed', mega); };
+    if (tt) tt.onclick = () => { tera = !tera; tt.setAttribute('aria-pressed', tera); };
+    const submit = str => { if (B.choose(sid, str)) res(); else document.getElementById('err').textContent = "That choice isn't allowed right now."; };
+    $app.querySelectorAll('[data-move]').forEach(b => b.onclick = () => submit(`move ${b.dataset.move}${mega ? ' mega' : ''}${tera ? ' terastallize' : ''}`));
+    $app.querySelectorAll('[data-sw]').forEach(b => b.onclick = () => submit(`switch ${b.dataset.sw}`));
+  });
+}
+
+function cpuChoice(sid) {
+  const req = B[sid].activeRequest;
+  const foe = B[sid === 'p1' ? 'p2' : 'p1'].active[0];
+  const alive = req.side.pokemon.map((p, k) => ({p, k: k + 1})).filter(x => !x.p.active && !x.p.condition.endsWith('fnt'));
+  if (req.forceSwitch) { B.choose(sid, alive.length ? `switch ${rand(alive).k}` : 'pass'); return; }
+  const act = req.active[0];
+  const me = B[sid].active[0];
+  let best = null, bestScore = -1;
+  act.moves.forEach((m, k) => {
+    if (m.disabled) return;
+    const mv = Dex.moves.get(m.id);
+    let score;
+    if (mv.category === 'Status' || !foe) score = 25 + Math.random() * 30;
+    else {
+      const types = foe.getTypes();
+      const immune = !Dex.getImmunity(mv.type, types);
+      const eff = Math.pow(2, Dex.getEffectiveness(mv.type, types));
+      const stab = me.getTypes().includes(mv.type) ? 1.5 : 1;
+      score = immune ? 0 : (mv.basePower || 60) * eff * stab * (0.85 + Math.random() * 0.3);
+    }
+    if (score > bestScore) { bestScore = score; best = k + 1; }
+  });
+  let str = `move ${best || 1}`;
+  if (act.canMegaEvo) str += ' mega';
+  else if (act.canTerastallize && Math.random() < 0.5) str += ' terastallize';
+  if (!B.choose(sid, str)) B.choose(sid, 'default');
+}
+
+async function playGame(teams) {
+  B = new Battle({formatid: 'gen9customgame'});
+  B.setPlayer('p1', {name: S.players[0].name, team: Teams.pack(teams[0].map(toSet))});
+  B.setPlayer('p2', {name: S.players[1].name, team: Teams.pack(teams[1].map(toSet))});
+  if (B.p1.activeRequest?.teamPreview) { B.choose('p1', 'default'); B.choose('p2', 'default'); }
+  logIdx = 0; $log = null;
+  battleShell('p1', '');
+  const head = document.createElement('div'); head.className = 't'; head.textContent = `Game ${S.game}`; $log.appendChild(head);
+  await revealLog();
+  let lastViewer = null;
+  while (!B.ended) {
+    const need = ['p1', 'p2'].filter(sid => { const r = B[sid].activeRequest; return r && !r.wait && !B[sid].isChoiceDone(); });
+    if (!need.length) break;
+    for (const sid of need) {
+      if (isCpu(sideIdx(sid))) { cpuChoice(sid); continue; }
+      if (S.mode === 'friend' && need.length > 1 && lastViewer !== sid) {
+        await curtain(`${S.players[sideIdx(sid)].name}'s move`, `Turn ${B.turn} · hand the device over`, 'Show my options');
+      } else if (S.mode === 'friend' && lastViewer && lastViewer !== sid) {
+        await curtain(`${S.players[sideIdx(sid)].name}'s move`, `Hand the device over`, 'Show my options');
+      }
+      lastViewer = sid;
+      await humanChoice(sid);
+    }
+    const viewer = S.mode === 'cpu' ? 'p1' : (lastViewer || 'p1');
+    battleShell(viewer, `<p class="muted">Resolving turn…</p>`);
+    await revealLog();
+    document.getElementById('stage').innerHTML = stageHtml(viewer);
+    if (S.mode === 'friend') lastViewer = null;
+  }
+  await sleep(700);
+  if (!B.winner) return -1;
+  return B.winner === S.players[0].name ? 0 : 1;
+}
+
+setup();
+</script>
+
+</body>
+</html>
