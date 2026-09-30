@@ -59,6 +59,10 @@ button:focus-visible, select:focus-visible, input:focus-visible, .card:focus-vis
 .score .mid { font-family: var(--font-display); font-size: 22px; text-align: center; }
 .score .mid small { display: block; font-family: var(--font-data); font-size: 11px; color: var(--muted); letter-spacing: .1em; }
 .score .brand { font-family: var(--font-display); font-size: 16px; color: var(--accent); }
+.score .credits { text-align: right; font-size: 12px; color: var(--muted); min-width: 0; }
+.score .credits a { color: var(--fg); text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 2px; }
+.score .credits a:hover { text-decoration-color: var(--gold); }
+@media (max-width: 560px) { .score .credits { font-size: 10.5px; } }
 
 /* Setup */
 .hero { display: grid; gap: 18px; padding-block: 28px 8px; }
@@ -179,13 +183,27 @@ select { background: var(--panel-2); border: 1px solid var(--line); border-radiu
 .panel { background: rgba(9, 14, 30, .88); border: 1px solid rgba(255,255,255,.14); border-radius: 12px; padding: 12px 14px; backdrop-filter: blur(4px); box-shadow: 0 10px 30px rgba(0,0,0,.35); }
 .fieldbar { display: flex; gap: 6px; flex-wrap: wrap; min-height: 22px; align-items: flex-start; }
 .chip { font-family: var(--font-data); font-size: 11px; padding: 2px 7px; border-radius: 3px; background: var(--panel); border: 1px solid var(--line); color: var(--muted); }
-.mon { display: grid; grid-template-columns: minmax(0, 1fr) 170px; gap: 14px; align-items: center; }
-.mon.me { grid-template-columns: 170px minmax(0, 1fr); }
-.mon.foe .hud { max-width: 420px; }
-.mon.me .hud { max-width: 420px; justify-self: end; width: 100%; }
+.mon { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px; align-items: center; }
+.mon.me { grid-template-columns: auto minmax(0, 1fr); }
+.huds { display: grid; gap: 8px; min-width: 0; }
+.mon.foe .huds { max-width: 420px; }
+.mon.me .huds { max-width: 420px; justify-self: end; width: 100%; }
+.sprs { display: flex; gap: 8px; }
+.plat { width: 170px; }
 .mon.me .sprite { transform: scaleX(-1); }
 .mon .sprite { width: 150px; height: 150px; }
-@media (max-width: 560px) { .mon { grid-template-columns: minmax(0, 1fr) 120px; } .mon.me { grid-template-columns: 120px minmax(0, 1fr); } .mon .sprite { width: 110px; height: 110px; } }
+.doubles .plat { width: 136px; }
+.doubles .mon .sprite { width: 120px; height: 120px; }
+.doubles .hud { padding: 6px 9px; gap: 3px; }
+@media (max-width: 560px) {
+  .plat { width: 120px; } .mon .sprite { width: 110px; height: 110px; }
+  .doubles .plat { width: 84px; } .doubles .mon .sprite { width: 80px; height: 80px; }
+}
+.targets { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+.tgt.foe { border-color: rgba(255, 98, 71, .55); }
+.tgt.ally { border-color: rgba(60, 207, 122, .55); }
+.tgt .eff { display: block; margin-top: 3px; font-style: normal; font-family: var(--font-data); font-size: 10.5px; }
+.tgt .eff.se { color: #9dffb4; } .tgt .eff.nve { color: #ffd0a0; } .tgt .eff.none { color: #ffb0b0; }
 .hud { background: rgba(9, 14, 30, .86); border: 1px solid rgba(255,255,255,.14); border-radius: 8px; padding: 8px 10px; display: grid; gap: 5px; min-width: 0; backdrop-filter: blur(2px); }
 .hud.empty { visibility: hidden; }
 
@@ -395,7 +413,7 @@ function freshState(mode, names) {
 const isCpu = i => S.mode === 'cpu' && i === 1;
 
 function renderScore(extra = '') {
-  if (!S) { $score.innerHTML = `<div class="score"><span class="brand">Starter Draft</span><span></span><span></span></div>`; return; }
+  if (!S) { $score.innerHTML = `<div class="score"><span class="brand">Starter Draft</span><span></span><span class="credits">Battle engine &amp; move data: <a href="https://pokemonshowdown.com/" target="_blank" rel="noopener">Pokémon Showdown</a> · Sprites: <a href="https://github.com/PokeAPI/sprites" target="_blank" rel="noopener">PokéAPI</a></span></div>`; return; }
   const [a, b] = S.players;
   $score.innerHTML = `<div class="score"><span class="side">${esc(a.name)}</span><span class="mid">${S.wins[0]} – ${S.wins[1]}<small>${FORMATS[S.format].short}${extra ? ' · ' + extra : ''}</small></span><span class="side r">${esc(b.name)}</span></div>`;
 }
@@ -473,6 +491,7 @@ function openRoom(role, code, status) {
 const FORMATS = {
   standard: {label: 'Standard Bo3', short: 'STANDARD', blurb: 'Any fully evolved Pokémon with a competitive set.'},
   mega: {label: 'Mega Bo3', short: 'MEGA', blurb: 'Legendaries, Mythicals and Mega Evolutions only. Megas start already Mega Evolved, no stone needed.'},
+  doubles: {label: 'Doubles Bo3', short: 'DOUBLES', battle: 'gen9doublescustomgame', blurb: 'Two Pokémon per side on the field. Spread moves, redirection and doubles abilities all apply. Default sets use doubles movesets.'},
 };
 const savedName = () => { try { return localStorage.getItem('starter-draft-name') || ''; } catch { return ''; } };
 function setup() {
@@ -690,6 +709,7 @@ const MEGAS = Dex.species.all().filter(s => s.isMega && s.exists && s.isNonstand
 const POOLS = {
   standard: POOL,
   mega: [...POOL.filter(isLegendary), ...MEGAS],
+  doubles: POOL,
 };
 let GROUP = {};
 function setPool(format) {
@@ -715,7 +735,7 @@ const LEGENDARY_RATE = 0.10;
 function draftOptions(owned) {
   const ownedBases = owned.map(baseOf);
   const free = shuffle(Object.keys(GROUP).filter(b => !ownedBases.includes(b)));
-  if (S?.format !== 'standard') return free.slice(0, OPTIONS).map(repOf);
+  if (S?.format === 'mega') return free.slice(0, OPTIONS).map(repOf);
   const leg = free.filter(b => GROUP[b].some(isLegendary)), non = free.filter(b => !GROUP[b].some(isLegendary));
   const out = [];
   for (let k = 0; k < OPTIONS; k++) {
@@ -731,10 +751,11 @@ const FALLBACK_ITEMS = ['Leftovers', 'Life Orb', 'Heavy-Duty Boots', 'Choice Sca
 function newEntry(id, ability, rolled, taken = []) {
   const s = sp(id), b = s.baseStats;
   let d;
-  try { d = defaultSet(id); } catch { d = {moves: [], item: 'Leftovers', teraType: s.types[0]}; }
+  const dbl = S?.format === 'doubles';
+  try { d = defaultSet(id, dbl); } catch { d = {moves: [], item: 'Leftovers', teraType: s.types[0]}; }
   if (s.isMega) {
     // Newer Megas have no set of their own: use the base form's competitive set
-    if (!d.moves.filter(Boolean).length) { try { d.moves = defaultSet(baseOf(id)).moves; } catch {} }
+    if (!d.moves.filter(Boolean).length) { try { d.moves = defaultSet(baseOf(id), dbl).moves; } catch {} }
     if (!d.moves.filter(Boolean).length) d.moves = mpool(id).slice(0, 4);
     if (Dex.items.get(d.item).megaStone) d.item = '';
   }
@@ -940,7 +961,7 @@ function bringSelect(i) {
   return new Promise(res => {
     let order = [];
     const draw = () => {
-      $app.innerHTML = `<section class="stack"><div><p class="eyebrow">${esc(pl.name)} · Game ${S.game}</p><h2>Bring ${need} of ${avail.length}</h2><p class="muted">Tap in the order you want them. Your first pick leads.${banned.length ? ' Banned Pokémon sit out the rest of the match.' : ''}</p></div>
+      $app.innerHTML = `<section class="stack"><div><p class="eyebrow">${esc(pl.name)} · Game ${S.game}</p><h2>Bring ${need} of ${avail.length}</h2><p class="muted">Tap in the order you want them. ${S.format === 'doubles' ? 'Your first two picks lead.' : 'Your first pick leads.'}${banned.length ? ' Banned Pokémon sit out the rest of the match.' : ''}</p></div>
       <div class="bring">${pl.roster.map((e, k) => { const n = order.indexOf(k); const ban = banned.includes(k); return `<button class="card${ban ? ' banned' : ''}" data-k="${k}" aria-pressed="${n >= 0}" ${ban ? 'disabled' : ''}>${ban ? '<span class="ord ban">BANNED</span>' : n >= 0 ? `<span class="ord">${n === 0 ? 'LEAD' : n + 1}</span>` : ''}${spriteHtml(e.id)}<div class="name" style="font-size:14px">${esc(sp(e.id).name)}</div><div class="muted" style="font-size:12px">${esc(e.item)}</div></button>`; }).join('')}</div>
       <div class="row"><button class="btn" id="go" ${order.length !== need ? 'disabled' : ''}>Lock in ${order.length}/${need}</button><button class="btn ghost" id="clr">Clear</button></div></section>`;
       $app.querySelectorAll('.bring .card:not(:disabled)').forEach(c => c.onclick = () => {
@@ -1093,28 +1114,31 @@ async function revealLog(viewer) {
 }
 
 // ---------- Battle stage: snapshot, arena, animation, sound ----------
+// Field positions: p1a (and p1b in doubles) per side; DOM ids use the position
+const monSnap = m => m ? {id: m.species.id, name: m.species.name, hp: m.hp, maxhp: m.maxhp, status: m.status, types: m.getTypes(), tera: m.terastallized || '', boosts: {...m.boosts}, ability: m.getAbility().name, item: m.item ? Dex.items.get(m.item).name : '', fainted: m.fainted} : null;
+const slotCount = () => B.gameType === 'doubles' ? 2 : 1;
 function takeSnap() {
   const o = {weather: B.field.weather, terrain: B.field.terrain, pseudo: Object.keys(B.field.pseudoWeather)};
   for (const sid of ['p1', 'p2']) {
-    const s = B[sid], m = s.active[0];
+    const s = B[sid];
     o[sid] = {name: s.name, conds: Object.keys(s.sideConditions), bench: s.pokemon.map(p => ({n: p.species.name, f: p.fainted})),
-      mon: m ? {id: m.species.id, name: m.species.name, hp: m.hp, maxhp: m.maxhp, status: m.status, types: m.getTypes(), tera: m.terastallized || '', boosts: {...m.boosts}, ability: m.getAbility().name, item: m.item ? Dex.items.get(m.item).name : '', fainted: m.fainted} : null};
+      mons: Array.from({length: slotCount()}, (_, i) => monSnap(s.active[i]))};
   }
   return o;
 }
-const emptySnap = () => ({weather: '', terrain: '', pseudo: [], p1: {name: B.p1.name, conds: [], bench: [], mon: null}, p2: {name: B.p2.name, conds: [], bench: [], mon: null}});
+const emptySnap = () => ({weather: '', terrain: '', pseudo: [],
+  p1: {name: B.p1.name, conds: [], bench: [], mons: Array(slotCount()).fill(null)}, p2: {name: B.p2.name, conds: [], bench: [], mons: Array(slotCount()).fill(null)}});
 const weatherKey = w => ({sunnyday: 'sun', desolateland: 'sun', raindance: 'rain', primordialsea: 'rain', sandstorm: 'sand', snow: 'snow', snowscape: 'snow', hail: 'snow'})[w] || '';
 const hpClass = pct => pct <= 20 ? 'low' : pct <= 50 ? 'mid' : '';
 
-function hudHtml(sid, s, mine) {
-  const m = s.mon;
+function hudHtml(pos, m, s, mine, showBench) {
   const pct = m ? Math.max(0, Math.round(100 * m.hp / m.maxhp)) : 100;
   const boosts = m ? Object.entries(m.boosts).filter(([, v]) => v).map(([k, v]) => `<span class="chip">${STAT[k] || k} ${v > 0 ? '+' : ''}${v}</span>`).join('') : '';
-  const bench = s.bench.map(p => `<i class="${p.f ? 'f' : ''}" title="${esc(p.n)}"></i>`).join('');
-  return `<div class="hud${m ? '' : ' empty'}" id="hud-${sid}"><div class="l1"><span class="name" id="nm-${sid}">${esc(m?.name || '')}</span><span class="hpnum" id="hpt-${sid}">${m ? (mine ? `${m.hp}/${m.maxhp}` : pct + '%') : ''}</span></div>
-    <div class="hp"><i id="hpb-${sid}" class="${hpClass(pct)}" style="width:${pct}%"></i></div>
-    <div class="row" style="gap:5px" id="tags-${sid}">${m ? typeChips(m.types) : ''}${m?.status ? `<span class="status" style="background:${STATUS_COLORS[m.status] || 'var(--bad)'}">${m.status}</span>` : ''}${m?.tera ? `<span class="chip" style="color:var(--gold)">Tera ${esc(m.tera)}</span>` : ''}${boosts}</div>
-    <div class="row" style="justify-content:space-between"><span class="muted" style="font-size:12px">${esc(s.name)}${m ? ' · ' + esc(m.ability) : ''}${mine && m ? ` · <span class="helditem" id="item-${sid}">${esc(m.item || 'No item')}</span>` : ''}</span><span class="bench">${bench}</span></div></div>`;
+  const bench = showBench ? s.bench.map(p => `<i class="${p.f ? 'f' : ''}" title="${esc(p.n)}"></i>`).join('') : '';
+  return `<div class="hud${m && !m.fainted ? '' : ' empty'}" id="hud-${pos}"><div class="l1"><span class="name" id="nm-${pos}">${esc(m?.name || '')}</span><span class="hpnum" id="hpt-${pos}">${m ? (mine ? `${m.hp}/${m.maxhp}` : pct + '%') : ''}</span></div>
+    <div class="hp"><i id="hpb-${pos}" class="${hpClass(pct)}" style="width:${pct}%"></i></div>
+    <div class="row" style="gap:5px" id="tags-${pos}">${m ? typeChips(m.types) : ''}${m?.status ? `<span class="status" style="background:${STATUS_COLORS[m.status] || 'var(--bad)'}">${m.status}</span>` : ''}${m?.tera ? `<span class="chip" style="color:var(--gold)">Tera ${esc(m.tera)}</span>` : ''}${boosts}</div>
+    <div class="row" style="justify-content:space-between"><span class="muted" style="font-size:12px">${esc(s.name)}${m ? ' · ' + esc(m.ability) : ''}${mine ? ` · <span class="helditem" id="item-${pos}">${esc(m?.item || 'No item')}</span>` : ''}</span><span class="bench">${bench}</span></div></div>`;
 }
 function stageHtml(viewer, snap = takeSnap()) {
   const foeSid = viewer === 'p1' ? 'p2' : 'p1';
@@ -1123,11 +1147,13 @@ function stageHtml(viewer, snap = takeSnap()) {
   if (snap.terrain) chips.push(Dex.conditions.get(snap.terrain).name);
   for (const k of snap.pseudo) chips.push(Dex.conditions.get(k).name);
   for (const [who, sid] of [['Foe', foeSid], ['You', viewer]]) for (const k of snap[sid].conds) chips.push(`${who}: ${Dex.conditions.get(k).name}`);
-  const spr = sid => { const m = snap[sid].mon; return `<div class="plat"><div class="spr${m?.fainted ? ' gone' : ''}" id="spr-${sid}"${m?.status && !m.fainted ? ` data-status="${m.status}"` : ''}>${m ? spriteHtml(m.id) : ''}</div></div>`; };
+  const spr = (pos, m) => `<div class="plat"><div class="spr${!m || m.fainted ? ' gone' : ''}" id="spr-${pos}"${m?.status && !m.fainted ? ` data-status="${m.status}"` : ''}>${m ? spriteHtml(m.id) : ''}</div></div>`;
+  const huds = (sid, mine) => `<div class="huds">${snap[sid].mons.map((m, i) => hudHtml(sid + 'ab'[i], m, snap[sid], mine, i === 0)).join('')}</div>`;
+  const sprs = sid => `<div class="sprs">${snap[sid].mons.map((m, i) => spr(sid + 'ab'[i], m)).join('')}</div>`;
   return `<div class="stage">
     <div class="fieldbar"><span class="row" style="gap:6px;flex:1">${chips.map(c => `<span class="chip">${esc(c)}</span>`).join('')}</span><button class="mute" id="mute" aria-pressed="${SFX.muted}" title="Sound">${SFX.muted ? 'Sound off' : 'Sound on'}</button></div>
-    <div class="mon foe">${hudHtml(foeSid, snap[foeSid], false)}${spr(foeSid)}</div>
-    <div class="mon me">${spr(viewer)}${hudHtml(viewer, snap[viewer], true)}</div>
+    <div class="mon foe">${huds(foeSid, false)}${sprs(foeSid)}</div>
+    <div class="mon me">${sprs(viewer)}${huds(viewer, true)}</div>
     <div class="ticker" id="ticker" aria-hidden="true"></div>
   </div>`;
 }
@@ -1137,13 +1163,14 @@ const STATUS_COLORS = {brn: '#ff7a2e', psn: '#b45aff', tox: '#b45aff', par: '#ff
 function animateLine(p, fx) {
   const [cmd, a, b, c] = p;
   const $ = id => document.getElementById(id);
-  const sidOf = ident => ident?.slice(0, 2);
+  // Field position from an ident like "p2b: Gengar" (DOM ids are per position)
+  const sidOf = ident => ident?.slice(0, 3);
   const pulse = (node, cls, ms) => { if (!node) return; node.classList.remove(cls); void node.offsetWidth; node.classList.add(cls); setTimeout(() => node.classList.remove(cls), ms); };
   const setHp = (sid, hp) => {
     const [x, y] = hp.split(' ')[0].split('/').map(Number);
     const pct = y ? Math.max(0, Math.round(100 * x / y)) : 0;
     const bar = $('hpb-' + sid); if (bar) { bar.style.width = pct + '%'; bar.className = hpClass(pct); }
-    const t = $('hpt-' + sid); if (t) t.textContent = sid === fx.viewer && y && y !== 100 ? `${x}/${y}` : pct + '%';
+    const t = $('hpt-' + sid); if (t) t.textContent = sid.slice(0, 2) === fx.viewer && y && y !== 100 ? `${x}/${y}` : pct + '%';
   };
   const center = sid => {
     const arena = $('arena'), ar = arena?.getBoundingClientRect(), r = $('spr-' + sid)?.getBoundingClientRect();
@@ -1166,7 +1193,7 @@ function animateLine(p, fx) {
       if ($('nm-' + sid)) $('nm-' + sid).textContent = s.name;
       if ($('tags-' + sid)) $('tags-' + sid).innerHTML = typeChips(s.types);
       const it = $('item-' + sid);
-      if (it) { const pk = B[sid].pokemon.find(x => x.species.name === s.name || x.baseSpecies.name === s.baseSpecies); it.textContent = pk?.item ? Dex.items.get(pk.item).name : 'No item'; }
+      if (it) { const pk = B[sid.slice(0, 2)].pokemon.find(x => x.species.name === s.name || x.baseSpecies.name === s.baseSpecies); it.textContent = pk?.item ? Dex.items.get(pk.item).name : 'No item'; }
       setHp(sid, c); pulse(box, 'enter', 500); sfx('switch'); return 480;
     }
     case 'detailschange': {
@@ -1282,7 +1309,7 @@ function battleShell(viewer, controls, snap) {
   const keep = $log;
   const s = snap || takeSnap();
   // The arena fills the whole battle screen; controls and log float over it as panels
-  $app.innerHTML = `<section class="battle arena" id="arena" data-weather="${weatherKey(s.weather)}"><div class="wx" aria-hidden="true"></div>
+  $app.innerHTML = `<section class="battle arena${slotCount() > 1 ? ' doubles' : ''}" id="arena" data-weather="${weatherKey(s.weather)}"><div class="wx" aria-hidden="true"></div>
     <div class="bfield"><div id="stage">${stageHtml(viewer, s)}</div><div class="controls panel" id="controls">${controls}</div></div>
     <div class="log panel" id="log" aria-live="polite"></div></section>`;
   const fresh = document.getElementById('log');
@@ -1290,76 +1317,144 @@ function battleShell(viewer, controls, snap) {
   if (keep) { fresh.replaceWith(keep); keep.scrollTop = keep.scrollHeight; } else { $log = fresh; }
 }
 
-function controlsHtml(sid) {
+// Doubles: moves with these target types need a target picked; spread and self moves don't
+const TARGETED = new Set(['normal', 'any', 'adjacentFoe', 'adjacentAlly', 'adjacentAllyOrSelf']);
+const otherSid = sid => sid === 'p1' ? 'p2' : 'p1';
+// Type-chart hint only: abilities like Levitate or Flash Fire aren't accounted for
+function effTag(mv, types, who = '') {
+  if (!types || mv.category === 'Status') return '';
+  const w = who ? ` vs ${esc(who)}` : '';
+  if (!Dex.getImmunity(mv.type, types)) return `<em class="eff none">No effect${w}</em>`;
+  const e = Dex.getEffectiveness(mv.type, types);
+  return e > 0 ? `<em class="eff se">Super effective${e > 1 ? ' ×4' : ''}${w}</em>` : e < 0 ? `<em class="eff nve">Not very effective${e < -1 ? ' ×¼' : ''}${w}</em>` : '';
+}
+function validTargets(sid, slot, mv) {
+  const foes = B[otherSid(sid)].active.map((m, i) => ({num: i + 1, m, foe: true})).filter(x => x.m && !x.m.fainted);
+  const allies = B[sid].active.map((m, i) => ({num: -(i + 1), m, foe: false, i})).filter(x => x.m && !x.m.fainted && (x.i !== slot || mv.target === 'adjacentAllyOrSelf'));
+  if (mv.target === 'adjacentFoe') return foes;
+  if (mv.target === 'adjacentAlly' || mv.target === 'adjacentAllyOrSelf') return allies;
+  return [...foes, ...allies];
+}
+
+function controlsHtml(sid, slot = 0, st = {usedSwitch: new Set()}) {
   const req = B[sid].activeRequest;
-  const act = req.active?.[0];
-  let html = `<div class="row" style="justify-content:space-between"><h3>${esc(S.players[sideIdx(sid)].name)}: ${req.forceSwitch ? 'choose a replacement' : 'what will you do?'}</h3></div>`;
-  if (!req.forceSwitch && act) {
-    html += `<div class="row">${act.canMegaEvo ? `<button class="toggle" id="t-mega" aria-pressed="false">Mega Evolve</button>` : ''}${act.canTerastallize ? `<button class="toggle" id="t-tera" aria-pressed="false">Terastallize (${esc(act.canTerastallize)})</button>` : ''}</div>`;
-    const foe = B[sid === 'p1' ? 'p2' : 'p1'].active[0];
-    const foeTypes = foe && !foe.fainted ? foe.getTypes() : null;
-    // Type-chart hint only: abilities like Levitate or Flash Fire aren't accounted for
-    const effNote = mv => {
-      if (!foeTypes || mv.category === 'Status') return '';
-      if (!Dex.getImmunity(mv.type, foeTypes)) return '<em class="eff none">No effect</em>';
-      const e = Dex.getEffectiveness(mv.type, foeTypes);
-      return e > 0 ? `<em class="eff se">Super effective${e > 1 ? ' ×4' : ''}</em>` : e < 0 ? `<em class="eff nve">Not very effective${e < -1 ? ' ×¼' : ''}</em>` : '';
-    };
+  const doubles = slotCount() > 1;
+  const act = req.forceSwitch ? null : req.active?.[slot];
+  const me = B[sid].active[slot];
+  const who = doubles && me && !req.forceSwitch ? `${me.species.name}` : S.players[sideIdx(sid)].name;
+  let html = `<div class="row" style="justify-content:space-between"><h3>${esc(who)}: ${req.forceSwitch ? 'choose a replacement' : 'what will you do?'}</h3>${st.back ? '<button class="btn ghost" id="back">Back</button>' : ''}</div>`;
+  if (act) {
+    const canMega = act.canMegaEvo && !st.megaUsed, canTera = act.canTerastallize && !st.teraUsed;
+    html += `<div class="row">${canMega ? `<button class="toggle" id="t-mega" aria-pressed="false">Mega Evolve</button>` : ''}${canTera ? `<button class="toggle" id="t-tera" aria-pressed="false">Terastallize (${esc(act.canTerastallize)})</button>` : ''}</div>`;
+    const foes = B[otherSid(sid)].active.filter(m => m && !m.fainted);
+    const effNote = mv => foes.map(f => effTag(mv, f.getTypes(), doubles ? f.species.name : '')).join('');
     html += `<div class="moves">${act.moves.map((m, k) => { const mv = Dex.moves.get(m.id); const col = TYPE_COLORS[mv.type] || '#555';
       const acc = mv.accuracy === true ? 'Never misses' : `${mv.accuracy}% acc`;
       return `<button class="move" data-move="${k + 1}" style="background:${col}" ${m.disabled ? 'disabled' : ''}><b>${esc(m.move)}</b><span>${esc(mv.type)} · ${mv.category === 'Status' ? 'Status' : (mv.basePower || '—') + ' BP'} · ${acc}${mv.priority ? ` · Priority ${mv.priority > 0 ? '+' : ''}${mv.priority}` : ''}${m.maxpp ? ` · ${m.pp}/${m.maxpp} PP` : ''}</span>${moveDesc(mv) ? `<small class="desc">${esc(moveDesc(mv))}</small>` : ''}${effNote(mv)}</button>`; }).join('')}</div>`;
   }
-  const trapped = !req.forceSwitch && act?.trapped;
+  const trapped = act?.trapped;
   html += `<div class="eyebrow">${trapped ? 'Trapped — cannot switch' : 'Switch'}</div><div class="switches">${req.side.pokemon.map((p, k) => {
     const fnt = p.condition.endsWith('fnt'); const s = sp(p.details.split(',')[0]);
-    return `<button class="sw" data-sw="${k + 1}" ${p.active || fnt || trapped ? 'disabled' : ''}>${spriteHtml(s.id)}<span>${esc(s.name)}<br><span class="hpnum">${fnt ? 'fainted' : hpPct(p.condition) + '%'}${p.item ? ' · ' + esc(Dex.items.get(p.item).name) : ''}</span></span></button>`; }).join('')}</div><div class="err" id="err"></div>`;
+    return `<button class="sw" data-sw="${k + 1}" ${p.active || fnt || trapped || st.usedSwitch.has(k + 1) ? 'disabled' : ''}>${spriteHtml(s.id)}<span>${esc(s.name)}<br><span class="hpnum">${fnt ? 'fainted' : hpPct(p.condition) + '%'}${p.item ? ' · ' + esc(Dex.items.get(p.item).name) : ''}</span></span></button>`; }).join('')}</div><div class="err" id="err"></div>`;
   return html;
 }
+function targetHtml(sid, slot, mv) {
+  const me = B[sid].active[slot];
+  return `<div class="row" style="justify-content:space-between"><h3>${esc(me.species.name)}: ${esc(mv.name)} — pick a target</h3><button class="btn ghost" id="back">Back</button></div>
+    <div class="targets">${validTargets(sid, slot, mv).map(t => `<button class="sw tgt ${t.foe ? 'foe' : 'ally'}" data-target="${t.num}">${spriteHtml(t.m.species.id)}<span>${esc(t.m.species.name)}<br><span class="hpnum">${t.foe ? 'Foe' : t.num === -(slot + 1) ? 'Self' : 'Ally'} · ${Math.round(100 * t.m.hp / t.m.maxhp)}%</span>${t.foe ? effTag(mv, t.m.getTypes()) : ''}</span></button>`).join('')}</div><div class="err" id="err"></div>`;
+}
 
+// Builds the whole side's choice ("move 1 2, switch 4") one field slot at a time
 function humanChoice(sid) {
   return new Promise(res => {
-    battleShell(sid, controlsHtml(sid));
-    let mega = false, tera = false;
-    const tm = document.getElementById('t-mega'), tt = document.getElementById('t-tera');
-    if (tm) tm.onclick = () => { mega = !mega; tm.setAttribute('aria-pressed', mega); };
-    if (tt) tt.onclick = () => { tera = !tera; tt.setAttribute('aria-pressed', tera); };
-    const submit = str => { if (B.choose(sid, str)) res(str); else document.getElementById('err').textContent = "That choice isn't allowed right now."; };
-    $app.querySelectorAll('[data-move]').forEach(b => b.onclick = () => submit(`move ${b.dataset.move}${mega ? ' mega' : ''}${tera ? ' terastallize' : ''}`));
-    $app.querySelectorAll('[data-sw]').forEach(b => b.onclick = () => submit(`switch ${b.dataset.sw}`));
+    const req = B[sid].activeRequest;
+    const n = req.forceSwitch ? req.forceSwitch.length : (req.active?.length || 1);
+    let slot, parts, st, history;
+    const reset = () => { slot = 0; parts = []; st = {usedSwitch: new Set(), megaUsed: false, teraUsed: false}; history = []; };
+    const benchFree = () => req.side.pokemon.some((p, k) => !p.active && !p.condition.endsWith('fnt') && !st.usedSwitch.has(k + 1));
+    const needs = i => req.forceSwitch ? !!req.forceSwitch[i] && benchFree()
+      : !!req.active?.[i] && !req.side.pokemon[i]?.condition.endsWith('fnt') && !req.active[i].commanding;
+    const commit = (part, change = {}) => {
+      history.push({parts: [...parts], st: {usedSwitch: new Set(st.usedSwitch), megaUsed: st.megaUsed, teraUsed: st.teraUsed}, slot});
+      parts.push(part); Object.assign(st, change); slot++; advance();
+    };
+    const back = () => { const h = history.pop(); if (!h) return; parts = h.parts; st = h.st; slot = h.slot; draw(); };
+    const advance = () => {
+      while (slot < n && !needs(slot)) { parts.push('pass'); slot++; }
+      if (slot < n) return draw();
+      const str = parts.join(', ');
+      if (B.choose(sid, str)) return res(str);
+      reset(); advance();
+      document.getElementById('err').textContent = "That combination isn't allowed (for example, only one Tera per game). Choose again.";
+    };
+    const draw = () => {
+      battleShell(sid, controlsHtml(sid, slot, {...st, back: history.length > 0}));
+      let mega = false, tera = false;
+      const tm = document.getElementById('t-mega'), tt = document.getElementById('t-tera');
+      if (tm) tm.onclick = () => { mega = !mega; tm.setAttribute('aria-pressed', mega); };
+      if (tt) tt.onclick = () => { tera = !tera; tt.setAttribute('aria-pressed', tera); };
+      document.getElementById('back')?.addEventListener('click', back);
+      $app.querySelectorAll('[data-move]').forEach(b => b.onclick = () => {
+        const k = +b.dataset.move, mv = Dex.moves.get(req.active[slot].moves[k - 1].id);
+        const extra = `${mega ? ' mega' : ''}${tera ? ' terastallize' : ''}`, change = {megaUsed: st.megaUsed || mega, teraUsed: st.teraUsed || tera};
+        const targets = slotCount() > 1 && TARGETED.has(mv.target) ? validTargets(sid, slot, mv) : [];
+        if (targets.length <= 1) return commit(`move ${k}${targets.length ? ' ' + targets[0].num : ''}${extra}`, change);
+        battleShell(sid, targetHtml(sid, slot, mv));
+        document.getElementById('back').onclick = draw;
+        $app.querySelectorAll('[data-target]').forEach(t => t.onclick = () => commit(`move ${k} ${t.dataset.target}${extra}`, change));
+      });
+      $app.querySelectorAll('[data-sw]').forEach(b => b.onclick = () => commit(`switch ${b.dataset.sw}`, {usedSwitch: new Set([...st.usedSwitch, +b.dataset.sw])}));
+    };
+    reset(); advance();
   });
 }
 
 function cpuChoice(sid) {
   const req = B[sid].activeRequest;
-  const foe = B[sid === 'p1' ? 'p2' : 'p1'].active[0];
-  const alive = req.side.pokemon.map((p, k) => ({p, k: k + 1})).filter(x => !x.p.active && !x.p.condition.endsWith('fnt'));
-  if (req.forceSwitch) { B.choose(sid, alive.length ? `switch ${rand(alive).k}` : 'pass'); return; }
-  const act = req.active[0];
-  const me = B[sid].active[0];
-  let best = null, bestScore = -1;
-  act.moves.forEach((m, k) => {
-    if (m.disabled) return;
-    const mv = Dex.moves.get(m.id);
-    let score;
-    if (mv.category === 'Status' || !foe) score = 25 + Math.random() * 30;
-    else {
-      const types = foe.getTypes();
-      const immune = !Dex.getImmunity(mv.type, types);
-      const eff = Math.pow(2, Dex.getEffectiveness(mv.type, types));
-      const stab = me.getTypes().includes(mv.type) ? 1.5 : 1;
-      score = immune ? 0 : (mv.basePower || 60) * eff * stab * (0.85 + Math.random() * 0.3);
+  const n = req.forceSwitch ? req.forceSwitch.length : (req.active?.length || 1);
+  const used = new Set(), parts = [];
+  let megaUsed = false, teraUsed = false;
+  const bench = () => req.side.pokemon.map((p, k) => ({p, k: k + 1})).filter(x => !x.p.active && !x.p.condition.endsWith('fnt') && !used.has(x.k));
+  for (let i = 0; i < n; i++) {
+    if (req.forceSwitch) {
+      const opts = req.forceSwitch[i] ? bench() : [];
+      if (opts.length) { const c = rand(opts); used.add(c.k); parts.push(`switch ${c.k}`); } else parts.push('pass');
+      continue;
     }
-    if (score > bestScore) { bestScore = score; best = k + 1; }
-  });
-  let str = `move ${best || 1}`;
-  if (act.canMegaEvo) str += ' mega';
-  else if (act.canTerastallize && Math.random() < 0.5) str += ' terastallize';
-  if (!B.choose(sid, str)) B.choose(sid, 'default');
+    const act = req.active?.[i], me = B[sid].active[i];
+    if (!act || !me || me.fainted || act.commanding) { parts.push('pass'); continue; }
+    const foes = B[otherSid(sid)].active.map((m, j) => ({m, num: j + 1})).filter(x => x.m && !x.m.fainted);
+    let best = null, bestScore = -1;
+    act.moves.forEach((m, k) => {
+      if (m.disabled) return;
+      const mv = Dex.moves.get(m.id);
+      if (mv.category === 'Status' || !foes.length) {
+        const s = 25 + Math.random() * 30;
+        const tgt = slotCount() > 1 && TARGETED.has(mv.target) ? validTargets(sid, i, mv)[0]?.num : null;
+        if (s > bestScore) { bestScore = s; best = {k: k + 1, tgt}; }
+        return;
+      }
+      for (const f of foes) {
+        const types = f.m.getTypes();
+        const immune = !Dex.getImmunity(mv.type, types);
+        const eff = Math.pow(2, Dex.getEffectiveness(mv.type, types));
+        const stab = me.getTypes().includes(mv.type) ? 1.5 : 1;
+        const s = immune ? 0 : (mv.basePower || 60) * eff * stab * (0.85 + Math.random() * 0.3);
+        if (s > bestScore) { bestScore = s; best = {k: k + 1, tgt: slotCount() > 1 && TARGETED.has(mv.target) ? f.num : null}; }
+      }
+    });
+    let str = `move ${best?.k || 1}${best?.tgt != null ? ' ' + best.tgt : ''}`;
+    if (act.canMegaEvo && !megaUsed) { str += ' mega'; megaUsed = true; }
+    else if (act.canTerastallize && !teraUsed && Math.random() < 0.5) { str += ' terastallize'; teraUsed = true; }
+    parts.push(str);
+  }
+  if (!B.choose(sid, parts.join(', '))) B.choose(sid, 'default');
 }
 
 async function playGame(teams) {
   // Online games share a seed so both browsers compute identical battles
-  B = new Battle(S.mode === 'online' ? {formatid: 'gen9customgame', seed: `${S.seed},${S.battles++}`} : {formatid: 'gen9customgame'});
+  const battleFormat = FORMATS[S.format]?.battle || 'gen9customgame';
+  B = new Battle(S.mode === 'online' ? {formatid: battleFormat, seed: `${S.seed},${S.battles++}`} : {formatid: battleFormat});
   B.setPlayer('p1', {name: S.players[0].name, team: Teams.pack(teams[0].map(toSet))});
   B.setPlayer('p2', {name: S.players[1].name, team: Teams.pack(teams[1].map(toSet))});
   if (B.p1.activeRequest?.teamPreview) { B.choose('p1', 'default'); B.choose('p2', 'default'); }
