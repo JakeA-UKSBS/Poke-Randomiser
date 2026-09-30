@@ -66,6 +66,19 @@ button:focus-visible, select:focus-visible, input:focus-visible, .card:focus-vis
 .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
 .step { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
 .step b { font-family: var(--font-data); color: var(--gold); display: block; font-size: 12px; margin-bottom: 4px; }
+.showcase { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; max-width: 640px; }
+@media (max-width: 520px) { .showcase { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.show { display: grid; place-items: center; position: relative; padding-bottom: 8px; animation: bob 2.2s ease-in-out infinite alternate; }
+.show::after { content: ''; position: absolute; bottom: 0; width: 64%; height: 12px; border-radius: 50%; background: radial-gradient(ellipse, rgba(0,0,0,.5), transparent 70%); }
+.show .sprite { width: 96px; height: 96px; max-width: 100%; }
+@keyframes bob { from { transform: translateY(0); } to { transform: translateY(-7px); } }
+.howto summary { cursor: pointer; display: inline-block; list-style: none; background: transparent; color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 8px 14px; font-weight: 600; }
+.howto summary::-webkit-details-marker { display: none; }
+.howto summary::after { content: ' ▾'; color: var(--muted); }
+.howto[open] summary::after { content: ' ▴'; }
+.howto summary:hover { border-color: var(--muted); }
+.howto summary:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.howto[open] summary { margin-bottom: 10px; }
 .field { display: grid; gap: 6px; min-width: 0; }
 .field label { font-size: 13px; color: var(--muted); }
 .field input, .field select { background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 9px 10px; width: 100%; }
@@ -410,11 +423,13 @@ function setup() {
   <section class="hero" id="herosec">
     <p class="eyebrow">Draft · Build · Best of 3</p>
     <h1>Draft ${TEAM} random Pokémon, <span>roll their abilities</span>, then battle.</h1>
+    <div class="showcase" id="showcase" aria-hidden="true"></div>
+    <details class="howto"><summary>How to play</summary>
     <div class="steps">
       <div class="step"><b>STEP 1</b>${TEAM} rounds of picks, ${OPTIONS} random options each, from <span id="poolcount"></span> Pokémon.</div>
-      <div class="step"><b>STEP 2</b>Every Pokémon you take rolls 3 random abilities from any Pokémon. Keep one.</div>
-      <div class="step"><b>STEP 3</b>Set moves, items, Tera or Mega. Bring ${BRING} of your ${TEAM} to each game. Lose a game and you ban one of the winner's Pokémon.</div>
-    </div>
+      <div class="step"><b>STEP 2</b>Every Pokémon you take rolls 3 random abilities from any Pokémon. Keep one. You get one reroll per draft.</div>
+      <div class="step"><b>STEP 3</b>Set moves, items (one of each per team), Tera or Mega. Bring ${BRING} of your ${TEAM} to each game. Lose a game and you ban one of the winner's Pokémon.</div>
+    </div></details>
   </section>
   <section class="stack" style="margin-top:20px">
     <div class="stack" style="gap:6px" id="modesec"><span class="eyebrow">Game mode</span>
@@ -440,6 +455,9 @@ function setup() {
     for (const k of Object.keys(FORMATS)) document.getElementById('f-' + k).setAttribute('aria-pressed', k === f);
     document.getElementById('fblurb').textContent = FORMATS[f].blurb;
     document.getElementById('poolcount').textContent = Object.keys(GROUP).length;
+    // A few random Pokémon from this mode's pool, each with a random form
+    document.getElementById('showcase').innerHTML = shuffle(Object.keys(GROUP)).slice(0, 6)
+      .map((base, k) => `<div class="show" style="animation-delay:${-k * 0.37}s">${spriteHtml(rand(GROUP[base]))}</div>`).join('');
   };
   for (const k of Object.keys(FORMATS)) document.getElementById('f-' + k).onclick = () => setFormat(k);
   setFormat('standard');
@@ -617,16 +635,19 @@ function draftOptions(owned) {
 }
 // Megas drafted directly have no Random Battle set of their own: borrow the base form's moves, never a stone
 const mpool = id => { const m = movepool(sp(id).isMega ? baseOf(id) : id); return m.length ? m : learnset(id); };
-function newEntry(id, ability, rolled) {
+// Item clause: a new Pokémon's default item skips anything the team already holds
+const FALLBACK_ITEMS = ['Leftovers', 'Life Orb', 'Heavy-Duty Boots', 'Choice Scarf', 'Assault Vest', 'Sitrus Berry', 'Choice Band', 'Choice Specs', 'Expert Belt', 'Lum Berry', 'Rocky Helmet', 'Focus Sash'];
+function newEntry(id, ability, rolled, taken = []) {
   const s = sp(id), b = s.baseStats;
   let d;
   try { d = defaultSet(id); } catch { d = {moves: [], item: 'Leftovers', teraType: s.types[0]}; }
-  if (s.isMega) { if (!d.moves.filter(Boolean).length) d.moves = mpool(id).slice(0, 4); if (Dex.items.get(d.item).megaStone) d.item = 'Leftovers'; }
+  if (s.isMega) { if (!d.moves.filter(Boolean).length) d.moves = mpool(id).slice(0, 4); if (Dex.items.get(d.item).megaStone) d.item = ''; }
+  const item = [d.item, ...FALLBACK_ITEMS, ...COMMON_ITEMS].find(x => x && !taken.includes(x));
   let spread = b.atk >= b.spa ? (b.spe >= 90 ? 'physfast' : 'physpow') : (b.spe >= 90 ? 'specfast' : 'specpow');
   if (Math.max(b.atk, b.spa) < 80) spread = b.def >= b.spd ? 'physwall' : 'specwall';
   const moves = [...d.moves]; while (moves.length < 4) moves.push('');
   const tera = TYPES.includes(d.teraType) ? d.teraType : s.types[0];
-  return {id, ability: ability || d.ability || s.abilities[0], rolled: !!rolled, moves, item: d.item || 'Leftovers', tera, spread, full: false};
+  return {id, ability: ability || d.ability || s.abilities[0], rolled: !!rolled, moves, item, tera, spread, full: false};
 }
 
 // Never offer an ability already on this player's team (or in `also`, e.g. the set being rerolled)
@@ -658,10 +679,12 @@ async function rollAbility(pl, picked) {
   const spin = async () => {
     reroll.hidden = true;
     cards.forEach(c => { c.disabled = true; c.setAttribute('aria-pressed', 'false'); c.firstChild.classList.add('spin'); c.lastChild.textContent = ''; });
-    for (let i = 0; i <= 14 + (finals.length - 1) * 6; i++) {
-      cards.forEach((c, k) => { if (i < 14 + k * 6) c.firstChild.textContent = rand(ABILITIES); });
-      cards.forEach((c, k) => { if (i === 14 + k * 6) { c.firstChild.textContent = finals[k]; c.firstChild.classList.remove('spin'); c.lastChild.textContent = abilDesc(finals[k]); } });
-      await sleep(40 + i * 5);
+    // Spin timing: first card lands after LAND ticks, each next one GAP ticks later (~0.6s total)
+    const LAND = 7, GAP = 3;
+    for (let i = 0; i <= LAND + (finals.length - 1) * GAP; i++) {
+      cards.forEach((c, k) => { if (i < LAND + k * GAP) c.firstChild.textContent = rand(ABILITIES); });
+      cards.forEach((c, k) => { if (i === LAND + k * GAP) { c.firstChild.textContent = finals[k]; c.firstChild.classList.remove('spin'); c.lastChild.textContent = abilDesc(finals[k]); } });
+      await sleep(30 + i * 2);
     }
     cards.forEach(c => c.disabled = false); cards[0].focus();
     reroll.hidden = !(pl.rerolls > 0);
@@ -692,7 +715,7 @@ async function draftFor(i) {
   if (isCpu(i)) {
     for (let k = 0; k < TEAM; k++) {
       const id = rand(draftOptions(pl.roster.map(r => r.id)));
-      pl.roster.push(newEntry(rand(formsOf(id)), rand(abilityOptions(pl)), true));
+      pl.roster.push(newEntry(rand(formsOf(id)), rand(abilityOptions(pl)), true, pl.roster.map(e => e.item)));
     }
     return;
   }
@@ -704,7 +727,7 @@ async function draftFor(i) {
     const owned = pl.roster.map(r => r.id);
     const id = await choose(`Pick ${k + 1} of ${TEAM}`, `${pl.name} · ${pl.roster.length} Pokémon so far`, draftOptions(owned), formsNote, pl);
     const r = await rollAbility(pl, id);
-    pl.roster.push(newEntry(r.id, r.ability, true));
+    pl.roster.push(newEntry(r.id, r.ability, true, pl.roster.map(e => e.item)));
   }
   await builder(i);
 }
@@ -732,13 +755,17 @@ function moveMeta(name) {
   return `<span class="type" style="background:${TYPE_COLORS[m.type] || '#666'}">${esc(m.type)}</span> ${m.category === 'Status' ? 'Status' : (m.basePower || '—') + ' ' + (m.category === 'Physical' ? 'Phys' : 'Spec')}`;
 }
 const moveColor = name => name ? TYPE_COLORS[Dex.moves.get(name).type] || 'var(--line)' : 'var(--line)';
-function builderCard(e, idx) {
+function builderCard(e, idx, roster) {
   const s = sp(e.id);
   const pool = e.full ? learnset(e.id) : mpool(e.id);
   const allMoves = [...new Set([...pool, ...e.moves.filter(Boolean)])].sort();
   const megas = megaStonesFor(e.id);
   const isMega = megas.includes(e.item);
   const itemOpts = [...new Set([...megas, e.item, ...COMMON_ITEMS])].filter(Boolean);
+  // Items held by teammates can't be picked here (item clause)
+  const heldBy = {};
+  roster.forEach((o, k) => { if (k !== idx && o.item) heldBy[o.item] ||= sp(o.id).name; });
+  const itemOpt = x => `<option value="${esc(x)}" ${x === e.item ? 'selected' : ''} ${heldBy[x] && x !== e.item ? 'disabled' : ''}>${esc(x)}${heldBy[x] ? ` (held by ${esc(heldBy[x])})` : ''}</option>`;
   const abilSel = e.rolled
     ? `<div class="full abil">Ability: <b>${esc(e.ability)}</b> <span class="tag">ROLLED</span><div class="muted">${esc(abilDesc(e.ability))}</div></div>`
     : `<div class="field full"><label for="ab-${idx}">Ability</label><select id="ab-${idx}" data-k="ability">${Object.values(s.abilities).map(a => `<option ${a === e.ability ? 'selected' : ''}>${esc(a)}</option>`).join('')}</select></div>`;
@@ -748,7 +775,7 @@ function builderCard(e, idx) {
       ${abilSel}
       ${e.moves.map((m, j) => `<div class="mv full"><select id="mv-${idx}-${j}" data-k="move" data-j="${j}" aria-label="Move ${j + 1}" style="border-left:6px solid ${moveColor(m)}"><option value="">—</option>${allMoves.map(x => `<option style="background:${moveColor(x)};color:#fff" ${x === m ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select><span class="meta">${moveMeta(m)}</span></div>`).join('')}
       <label class="chk full"><input type="checkbox" id="full-${idx}" data-k="full" ${e.full ? 'checked' : ''}> Show full learnset (${learnset(e.id).length} moves)</label>
-      <div class="field"><label for="it-${idx}">Item</label><select id="it-${idx}" data-k="item">${megas.length ? `<optgroup label="Mega Stone">${megas.map(x => `<option ${x === e.item ? 'selected' : ''}>${esc(x)}</option>`).join('')}</optgroup>` : ''}<optgroup label="Items">${itemOpts.filter(x => !megas.includes(x)).map(x => `<option ${x === e.item ? 'selected' : ''}>${esc(x)}</option>`).join('')}</optgroup></select></div>
+      <div class="field"><label for="it-${idx}">Item</label><select id="it-${idx}" data-k="item">${megas.length ? `<optgroup label="Mega Stone">${megas.map(itemOpt).join('')}</optgroup>` : ''}<optgroup label="Items">${itemOpts.filter(x => !megas.includes(x)).map(itemOpt).join('')}</optgroup></select></div>
       <div class="field"><label for="te-${idx}">Tera type</label><select id="te-${idx}" data-k="tera" ${isMega ? 'disabled' : ''}>${isMega ? '<option>Mega instead</option>' : TYPES.map(t => `<option ${t === e.tera ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
       <div class="field full"><label for="sp-${idx}">EVs and nature</label><select id="sp-${idx}" data-k="spread">${Object.entries(SPREADS).map(([k, v]) => `<option value="${k}" ${k === e.spread ? 'selected' : ''}>${esc(v.label)}</option>`).join('')}</select></div>
     </div></div>`;
@@ -760,6 +787,9 @@ function rosterProblems(roster) {
     if (!mv.length) out.push(`${sp(e.id).name} needs at least one move.`);
     if (new Set(mv).size !== mv.length) out.push(`${sp(e.id).name} has the same move twice.`);
   });
+  const holders = {};
+  roster.forEach(e => { if (e.item) (holders[e.item] ||= []).push(sp(e.id).name); });
+  for (const [item, names] of Object.entries(holders)) if (names.length > 1) out.push(`${names.join(' and ')} both hold ${item}. Only one of each item per team.`);
   return out;
 }
 function builder(i) {
