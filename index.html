@@ -30,6 +30,7 @@
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { background: var(--bg); color: var(--fg); }
 body { font-family: var(--font-body); font-size: 15px; line-height: 1.45; margin: 0; }
 .wrap { max-width: 1080px; margin: 0 auto; padding-inline: 16px; padding-block: 12px 40px; }
@@ -129,14 +130,90 @@ select { background: var(--panel-2); border: 1px solid var(--line); border-radiu
 /* Battle */
 .battle { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 14px; align-items: start; }
 @media (max-width: 760px) { .battle { grid-template-columns: 1fr; } }
-.stage { background: linear-gradient(180deg, var(--panel-2), var(--panel)); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: grid; gap: 10px; }
-.fieldbar { display: flex; gap: 6px; flex-wrap: wrap; min-height: 22px; }
+.stage { border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: grid; gap: 10px; }
+.fieldbar { display: flex; gap: 6px; flex-wrap: wrap; min-height: 22px; align-items: flex-start; }
 .chip { font-family: var(--font-data); font-size: 11px; padding: 2px 7px; border-radius: 3px; background: var(--panel); border: 1px solid var(--line); color: var(--muted); }
-.mon { display: grid; grid-template-columns: 1fr 110px; gap: 10px; align-items: center; }
-.mon.me { grid-template-columns: 110px 1fr; }
+.mon { display: grid; grid-template-columns: 1fr 130px; gap: 10px; align-items: center; }
+.mon.me { grid-template-columns: 130px 1fr; }
 .mon.me .sprite { transform: scaleX(-1); }
-.mon .sprite { width: 110px; height: 110px; }
-.hud { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; display: grid; gap: 5px; min-width: 0; }
+.mon .sprite { width: 120px; height: 120px; }
+.hud { background: color-mix(in srgb, var(--bg) 88%, transparent); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; display: grid; gap: 5px; min-width: 0; backdrop-filter: blur(2px); }
+.hud.empty { visibility: hidden; }
+
+/* Arena: a floodlit night stadium drawn in CSS; content sits above the layers */
+.arena { position: relative; overflow: hidden; min-height: 340px; isolation: isolate;
+  background:
+    radial-gradient(ellipse 28% 22% at 12% 0%, rgba(255,244,210,.28), transparent 70%),
+    radial-gradient(ellipse 28% 22% at 88% 0%, rgba(255,244,210,.28), transparent 70%),
+    radial-gradient(circle, rgba(255,255,255,.22) 1px, transparent 1.6px) 0 18% / 9px 7px repeat-x,
+    repeating-linear-gradient(90deg, #1c2b54 0 16px, #18264b 16px 32px) 0 0 / 100% 36% no-repeat,
+    linear-gradient(180deg, #0b1330 0%, #14224a 36%, #2e7a3e 36%, #2b7139 100%); }
+.arena::before { content: ''; position: absolute; inset: 36% 0 0 0; z-index: -1;
+  background:
+    radial-gradient(ellipse 22% 18% at 50% 52%, transparent 96%, rgba(255,255,255,.5) 97% 99%, transparent 100%),
+    linear-gradient(90deg, transparent calc(50% - 1px), rgba(255,255,255,.45) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.05) 0 48px, transparent 48px 96px); }
+.arena::after { content: ''; position: absolute; left: 0; right: 0; top: 36%; height: 3px; background: rgba(255,255,255,.35); z-index: -1; }
+.arena > * { position: relative; }
+.arena .fieldbar .chip { background: rgba(10,15,30,.75); }
+.plat { position: relative; display: grid; place-items: center; }
+.plat::before { content: ''; position: absolute; bottom: 2px; left: 50%; width: 118px; height: 26px; transform: translateX(-50%); border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(0,0,0,.45), rgba(0,0,0,.15) 60%, transparent 72%); box-shadow: 0 0 0 2px rgba(255,255,255,.14); }
+.ticker { background: rgba(8,12,26,.88); border: 1px solid rgba(255,255,255,.15); border-radius: 6px; color: #f3f5fb; padding: 7px 10px; min-height: 2.4em; font-size: 14px; }
+.mute { margin-left: auto; background: rgba(10,15,30,.75); color: #dfe5f5; border: 1px solid rgba(255,255,255,.2); border-radius: 4px; padding: 2px 8px; font-size: 11.5px; font-family: var(--font-data); }
+.mute[aria-pressed="true"] { color: #8a93ad; }
+
+/* Weather overlays */
+.wx { position: absolute !important; inset: 0; z-index: 0; pointer-events: none; }
+.arena[data-weather="sun"] .wx { background: radial-gradient(ellipse at 80% 0%, rgba(255,196,80,.35), transparent 60%); }
+.arena[data-weather="rain"] .wx { background: repeating-linear-gradient(105deg, rgba(160,200,255,.18) 0 1px, transparent 1px 12px); animation: rain .5s linear infinite; background-color: rgba(40,70,130,.18); }
+.arena[data-weather="sand"] .wx { background: rgba(200,160,90,.28); }
+.arena[data-weather="snow"] .wx { background: radial-gradient(circle, rgba(255,255,255,.7) 1.2px, transparent 2px) 0 0 / 22px 22px; animation: snowfall 3s linear infinite; background-color: rgba(200,220,255,.12); }
+@keyframes rain { to { background-position: -20px 40px; } }
+@keyframes snowfall { to { background-position: 10px 66px; } }
+
+/* Battle animations (on the sprite wrapper; the player's own sprite image is mirrored) */
+.spr { position: relative; display: grid; place-items: center; min-height: 120px; }
+.mon.foe .spr { --lx: -26px; --ly: 18px; }
+.mon.me .spr { --lx: 26px; --ly: -18px; }
+.spr.lunge { animation: lunge .38s ease-out; }
+@keyframes lunge { 45% { transform: translate(var(--lx), var(--ly)) scale(1.07); } }
+.spr.hit { animation: shake .42s; }
+.spr.hit .sprite, .spr.hurt .sprite { animation: blink .42s steps(2, jump-none) 2; }
+@keyframes shake { 20% { transform: translateX(-8px); } 40% { transform: translateX(7px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(3px); } }
+@keyframes blink { 50% { opacity: .2; } }
+.spr.faint, .spr.gone { animation: faint .65s ease-in forwards; }
+.spr.gone { animation-duration: 0s; }
+@keyframes faint { to { transform: translateY(46px); opacity: 0; } }
+.spr.enter { animation: enter .5s cubic-bezier(.2, 1.5, .4, 1); }
+@keyframes enter { 0% { transform: scale(0); opacity: 0; filter: brightness(5); } 60% { filter: brightness(1.6); } }
+.spr::after { content: ''; position: absolute; inset: -6px; border-radius: 50%; pointer-events: none; opacity: 0; }
+.spr.heal::after { background: radial-gradient(circle, rgba(90,255,150,.55), transparent 65%); animation: glow .6s; }
+.spr.afflict::after { background: radial-gradient(circle, rgba(190,90,255,.5), transparent 65%); animation: glow .6s; }
+.spr.up::after, .spr.down::after { border-radius: 0; font-size: 22px; font-weight: 700; display: grid; place-items: center; letter-spacing: 6px; }
+.spr.up::after { content: '▲ ▲ ▲'; color: #5fb2ff; animation: rise .7s; }
+.spr.down::after { content: '▼ ▼ ▼'; color: #ff6b6b; animation: sink .7s; }
+.spr.mega::after { inset: -20px; background: conic-gradient(from 0deg, #ff5d5d, #ffd35d, #6dff8a, #5dc8ff, #b45dff, #ff5d5d); filter: blur(10px); animation: megaspin 1s; }
+.spr.mega .sprite, .spr.tera .sprite { animation: brighten 1s; }
+.spr.tera::after { inset: -16px; border-radius: 30%; background: conic-gradient(from 45deg, transparent, var(--tc, #fff), transparent 30%, var(--tc, #fff) 50%, transparent 70%, var(--tc, #fff)); animation: megaspin 1s; filter: blur(3px); }
+@keyframes glow { 30% { opacity: 1; } }
+@keyframes rise { 0% { opacity: 1; transform: translateY(20px); } 100% { opacity: 0; transform: translateY(-30px); } }
+@keyframes sink { 0% { opacity: 1; transform: translateY(-20px); } 100% { opacity: 0; transform: translateY(30px); } }
+@keyframes megaspin { 0% { opacity: 0; transform: rotate(0) scale(.6); } 40% { opacity: .9; } 100% { opacity: 0; transform: rotate(270deg) scale(1.2); } }
+@keyframes brighten { 40% { filter: brightness(2.2); } }
+.orb { position: absolute !important; width: 26px; height: 26px; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; z-index: 4;
+  background: radial-gradient(circle, #fff 15%, var(--c) 50%, transparent 72%); box-shadow: 0 0 20px var(--c); }
+.burst { position: absolute !important; width: 96px; height: 96px; border-radius: 50%; pointer-events: none; z-index: 4; transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(255,255,255,.95) 10%, var(--c) 38%, transparent 70%); animation: burst .38s ease-out forwards; }
+.aura { position: absolute !important; width: 130px; height: 130px; border-radius: 50%; pointer-events: none; z-index: 4; transform: translate(-50%, -50%);
+  background: radial-gradient(circle, transparent 40%, var(--c) 55%, transparent 70%); animation: burst .5s ease-out forwards; }
+@keyframes burst { from { transform: translate(-50%, -50%) scale(.2); opacity: 1; } to { transform: translate(-50%, -50%) scale(1.3); opacity: 0; } }
+.arena.critflash { animation: crit .3s; }
+@keyframes crit { 30% { box-shadow: inset 0 0 0 4px #ffd35d, inset 0 0 60px rgba(255,211,93,.5); } }
+.move .eff { font-style: normal; font-family: var(--font-data); font-size: 10.5px; font-weight: 600; padding: 1px 6px; border-radius: 3px; justify-self: start; background: rgba(0,0,0,.35); }
+.move .eff.se { color: #9dffb4; }
+.move .eff.nve { color: #ffd0a0; }
+.move .eff.none { color: #ffb0b0; }
 .hud .l1 { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
 .hud .l1 .name { font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hp { height: 9px; background: var(--panel-2); border-radius: 5px; overflow: hidden; }
@@ -184,7 +261,7 @@ select { background: var(--panel-2); border: 1px solid var(--line); border-radiu
 .mini.empty { background: transparent; border: 1px dashed var(--line); min-height: 90px; place-content: center; color: var(--line); font-family: var(--font-display); font-size: 22px; }
 .saved { display: grid; gap: 12px; }
 #export { width: 100%; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; color: var(--fg); font-family: var(--font-data); font-size: 12px; padding: 10px; }
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } .spr.faint, .spr.gone { opacity: 0; } }
 </style>
 
 <div id="scorebar"></div>
@@ -330,7 +407,7 @@ function setup() {
   const roomParam = (new URLSearchParams(location.search).get('room') || '').toUpperCase();
   let mode = roomParam ? 'online' : 'friend', format = 'standard';
   $app.innerHTML = `
-  <section class="hero">
+  <section class="hero" id="herosec">
     <p class="eyebrow">Draft · Build · Best of 3</p>
     <h1>Draft ${TEAM} random Pokémon, <span>roll their abilities</span>, then battle.</h1>
     <div class="steps">
@@ -340,20 +417,20 @@ function setup() {
     </div>
   </section>
   <section class="stack" style="margin-top:20px">
-    <div class="stack" style="gap:6px"><span class="eyebrow">Game mode</span>
+    <div class="stack" style="gap:6px" id="modesec"><span class="eyebrow">Game mode</span>
       <div class="row"><span class="seg" role="group" aria-label="Game mode">${Object.entries(FORMATS).map(([k, f]) => `<button id="f-${k}" aria-pressed="${k === format}">${esc(f.label)}</button>`).join('')}</span></div>
       <p class="muted" id="fblurb"></p></div>
-    <div class="stack" style="gap:6px"><span class="eyebrow">Opponent</span>
+    <div class="stack" style="gap:6px" id="oppsec"><span class="eyebrow">Opponent</span>
     <div class="row"><span class="seg" role="group" aria-label="Opponent">
       <button id="m-friend">Friend on this device</button><button id="m-online">Online friend</button><button id="m-cpu">Vs CPU</button></span></div></div>
+    ${roomParam ? `<p class="invite">You've been invited to room <b>${esc(roomParam)}</b>. Enter your name, then join.</p>` : ''}
     <div class="setup-grid">
       <div class="field"><label for="n1" id="n1l">Player 1</label><input id="n1" value="${esc(savedName())}" placeholder="Your name" maxlength="18"></div>
       <div class="field" id="n2f"><label for="n2">Player 2</label><input id="n2" value="Challenger" maxlength="18"></div>
     </div>
     <div class="row" id="localgo"><button class="btn" id="go">Start draft</button><span class="muted">Level 50, Gen 9 mechanics, Showdown's battle engine.</span></div>
     <div class="online stack" id="online" hidden>
-      ${roomParam ? `<p class="invite">You've been invited to room <b>${esc(roomParam)}</b>. Enter your name, then join.</p>` : ''}
-      <div class="row"><button class="btn" id="host">Create a room</button><span class="muted">The room creator's game mode is used.</span></div>
+      <div class="row" id="hostrow"><button class="btn" id="host">Create a room</button><span class="muted">The room creator's game mode is used.</span></div>
       <div class="row"><div class="field" style="max-width:160px"><label for="code">Room code</label><input id="code" maxlength="5" autocomplete="off" value="${esc(roomParam)}" style="text-transform:uppercase;font-family:var(--font-data);letter-spacing:.15em"></div><button class="btn ghost" id="join" style="align-self:end">Join room</button></div>
       <div id="netstatus" class="stack" style="gap:8px"></div>
     </div>
@@ -377,6 +454,12 @@ function setup() {
   };
   for (const k of ['friend', 'online', 'cpu']) document.getElementById('m-' + k).onclick = () => setMode(k);
   setMode(mode);
+  // Invited players only need their name and the Join button
+  if (roomParam) {
+    for (const id of ['herosec', 'modesec', 'oppsec', 'hostrow']) document.getElementById(id).hidden = true;
+    document.getElementById('join').className = 'btn';
+    document.getElementById('online').insertAdjacentHTML('beforeend', `<p class="muted" style="font-size:13px">Not joining a friend? <a href="${esc(location.pathname)}" style="color:var(--gold)">Start your own game</a></p>`);
+  }
   document.getElementById('go').onclick = () => {
     let n1 = document.getElementById('n1').value.trim() || 'Player 1';
     let n2 = document.getElementById('n2').value.trim() || 'Player 2';
@@ -857,49 +940,203 @@ function describe(line) {
   }
 }
 
-async function revealLog() {
+async function revealLog(viewer) {
   const lines = B.log.slice(logIdx); logIdx = B.log.length;
+  const fx = {viewer, last: null, eff: null};
   for (let k = 0; k < lines.length; k++) {
     if (lines[k].startsWith('|split|')) { k++; continue; }
     const d = describe(lines[k]);
-    if (!d) continue;
-    const el = document.createElement('div'); el.textContent = d.t; if (d.cls) el.className = d.cls;
-    $log.appendChild(el); $log.scrollTop = $log.scrollHeight;
-    if (d.cls === 'big' || d.cls === 't') await sleep(260); else await sleep(90);
+    let ms = 0;
+    try { ms = animateLine(lines[k].split('|').slice(1), fx); } catch (e) { console.warn('animation skipped', e); }
+    if (d) {
+      const el = document.createElement('div'); el.textContent = d.t; if (d.cls) el.className = d.cls;
+      $log.appendChild(el); $log.scrollTop = $log.scrollHeight;
+      const tk = document.getElementById('ticker');
+      if (tk && d.cls !== 't') tk.textContent = d.t;
+    }
+    if (d || ms) await sleep(Math.max(ms, !d ? 0 : d.cls === 'big' || d.cls === 't' ? 260 : 110));
   }
 }
 
-function hudHtml(side, mine) {
-  const m = side.active[0];
-  if (!m) return '';
-  const pct = Math.max(0, Math.round(100 * m.hp / m.maxhp));
-  const cls = pct <= 20 ? 'low' : pct <= 50 ? 'mid' : '';
-  const boosts = Object.entries(m.boosts).filter(([, v]) => v).map(([k, v]) => `<span class="chip">${STAT[k] || k} ${v > 0 ? '+' : ''}${v}</span>`).join('');
-  const bench = side.pokemon.map(p => `<i class="${p.fainted ? 'f' : ''}" title="${esc(p.species.name)}"></i>`).join('');
-  return `<div class="hud"><div class="l1"><span class="name">${esc(m.species.name)}</span><span class="hpnum">${mine ? `${m.hp}/${m.maxhp}` : pct + '%'}</span></div>
-    <div class="hp"><i class="${cls}" style="width:${pct}%"></i></div>
-    <div class="row" style="gap:5px">${typeChips(m.getTypes())}${m.status ? `<span class="status">${m.status}</span>` : ''}${m.terastallized ? `<span class="chip" style="color:var(--gold)">Tera ${esc(m.terastallized)}</span>` : ''}${boosts}</div>
-    <div class="row" style="justify-content:space-between"><span class="muted" style="font-size:12px">${esc(side.name)} · ${esc(m.getAbility().name)}</span><span class="bench">${bench}</span></div></div>`;
+// ---------- Battle stage: snapshot, arena, animation, sound ----------
+function takeSnap() {
+  const o = {weather: B.field.weather, terrain: B.field.terrain, pseudo: Object.keys(B.field.pseudoWeather)};
+  for (const sid of ['p1', 'p2']) {
+    const s = B[sid], m = s.active[0];
+    o[sid] = {name: s.name, conds: Object.keys(s.sideConditions), bench: s.pokemon.map(p => ({n: p.species.name, f: p.fainted})),
+      mon: m ? {id: m.species.id, name: m.species.name, hp: m.hp, maxhp: m.maxhp, status: m.status, types: m.getTypes(), tera: m.terastallized || '', boosts: {...m.boosts}, ability: m.getAbility().name, fainted: m.fainted} : null};
+  }
+  return o;
 }
-function stageHtml(viewer) {
-  const me = B[viewer], foe = B[viewer === 'p1' ? 'p2' : 'p1'];
+const emptySnap = () => ({weather: '', terrain: '', pseudo: [], p1: {name: B.p1.name, conds: [], bench: [], mon: null}, p2: {name: B.p2.name, conds: [], bench: [], mon: null}});
+const weatherKey = w => ({sunnyday: 'sun', desolateland: 'sun', raindance: 'rain', primordialsea: 'rain', sandstorm: 'sand', snow: 'snow', snowscape: 'snow', hail: 'snow'})[w] || '';
+const hpClass = pct => pct <= 20 ? 'low' : pct <= 50 ? 'mid' : '';
+
+function hudHtml(sid, s, mine) {
+  const m = s.mon;
+  const pct = m ? Math.max(0, Math.round(100 * m.hp / m.maxhp)) : 100;
+  const boosts = m ? Object.entries(m.boosts).filter(([, v]) => v).map(([k, v]) => `<span class="chip">${STAT[k] || k} ${v > 0 ? '+' : ''}${v}</span>`).join('') : '';
+  const bench = s.bench.map(p => `<i class="${p.f ? 'f' : ''}" title="${esc(p.n)}"></i>`).join('');
+  return `<div class="hud${m ? '' : ' empty'}" id="hud-${sid}"><div class="l1"><span class="name" id="nm-${sid}">${esc(m?.name || '')}</span><span class="hpnum" id="hpt-${sid}">${m ? (mine ? `${m.hp}/${m.maxhp}` : pct + '%') : ''}</span></div>
+    <div class="hp"><i id="hpb-${sid}" class="${hpClass(pct)}" style="width:${pct}%"></i></div>
+    <div class="row" style="gap:5px" id="tags-${sid}">${m ? typeChips(m.types) : ''}${m?.status ? `<span class="status">${m.status}</span>` : ''}${m?.tera ? `<span class="chip" style="color:var(--gold)">Tera ${esc(m.tera)}</span>` : ''}${boosts}</div>
+    <div class="row" style="justify-content:space-between"><span class="muted" style="font-size:12px">${esc(s.name)}${m ? ' · ' + esc(m.ability) : ''}</span><span class="bench">${bench}</span></div></div>`;
+}
+function stageHtml(viewer, snap = takeSnap()) {
+  const foeSid = viewer === 'p1' ? 'p2' : 'p1';
   const chips = [];
-  if (B.field.weather) chips.push(Dex.conditions.get(B.field.weather).name);
-  if (B.field.terrain) chips.push(Dex.conditions.get(B.field.terrain).name);
-  for (const k of Object.keys(B.field.pseudoWeather)) chips.push(Dex.conditions.get(k).name);
-  for (const [who, s] of [['Foe', foe], ['You', me]]) for (const k of Object.keys(s.sideConditions)) chips.push(`${who}: ${Dex.conditions.get(k).name}`);
-  return `<div class="stage">
-    <div class="fieldbar">${chips.map(c => `<span class="chip">${esc(c)}</span>`).join('')}</div>
-    <div class="mon">${hudHtml(foe, false)}${foe.active[0] ? spriteHtml(foe.active[0].species.id) : ''}</div>
-    <div class="mon me">${me.active[0] ? spriteHtml(me.active[0].species.id) : ''}${hudHtml(me, true)}</div>
+  if (snap.weather) chips.push(Dex.conditions.get(snap.weather).name);
+  if (snap.terrain) chips.push(Dex.conditions.get(snap.terrain).name);
+  for (const k of snap.pseudo) chips.push(Dex.conditions.get(k).name);
+  for (const [who, sid] of [['Foe', foeSid], ['You', viewer]]) for (const k of snap[sid].conds) chips.push(`${who}: ${Dex.conditions.get(k).name}`);
+  const spr = sid => { const m = snap[sid].mon; return `<div class="plat"><div class="spr${m?.fainted ? ' gone' : ''}" id="spr-${sid}">${m ? spriteHtml(m.id) : ''}</div></div>`; };
+  return `<div class="stage arena" id="arena" data-weather="${weatherKey(snap.weather)}">
+    <div class="wx" aria-hidden="true"></div>
+    <div class="fieldbar"><span class="row" style="gap:6px;flex:1">${chips.map(c => `<span class="chip">${esc(c)}</span>`).join('')}</span><button class="mute" id="mute" aria-pressed="${SFX.muted}" title="Sound">${SFX.muted ? 'Sound off' : 'Sound on'}</button></div>
+    <div class="mon foe">${hudHtml(foeSid, snap[foeSid], false)}${spr(foeSid)}</div>
+    <div class="mon me">${spr(viewer)}${hudHtml(viewer, snap[viewer], true)}</div>
+    <div class="ticker" id="ticker" aria-hidden="true"></div>
   </div>`;
 }
 
-function battleShell(viewer, controls) {
+// Replays one protocol line on the stage; returns how long to hold before the next line
+function animateLine(p, fx) {
+  const [cmd, a, b, c] = p;
+  const $ = id => document.getElementById(id);
+  const sidOf = ident => ident?.slice(0, 2);
+  const pulse = (node, cls, ms) => { if (!node) return; node.classList.remove(cls); void node.offsetWidth; node.classList.add(cls); setTimeout(() => node.classList.remove(cls), ms); };
+  const setHp = (sid, hp) => {
+    const [x, y] = hp.split(' ')[0].split('/').map(Number);
+    const pct = y ? Math.max(0, Math.round(100 * x / y)) : 0;
+    const bar = $('hpb-' + sid); if (bar) { bar.style.width = pct + '%'; bar.className = hpClass(pct); }
+    const t = $('hpt-' + sid); if (t) t.textContent = sid === fx.viewer && y && y !== 100 ? `${x}/${y}` : pct + '%';
+  };
+  const center = sid => {
+    const ar = $('arena')?.getBoundingClientRect(), r = $('spr-' + sid)?.getBoundingClientRect();
+    return ar && r ? {x: r.left - ar.left + r.width / 2, y: r.top - ar.top + r.height / 2} : null;
+  };
+  const spawn = (cls, color, at, extra = '') => {
+    const ar = $('arena'); if (!ar || !at) return null;
+    const d = document.createElement('div'); d.className = cls; d.style.cssText = `left:${at.x}px;top:${at.y}px;--c:${color};${extra}`;
+    ar.appendChild(d); setTimeout(() => d.remove(), 900); return d;
+  };
+  switch (cmd) {
+    case 'switch': case 'drag': case 'replace': {
+      const sid = sidOf(a), s = sp(b.split(',')[0]);
+      const box = $('spr-' + sid); if (!box) return 0;
+      box.classList.remove('gone', 'faint'); box.innerHTML = spriteHtml(s.id);
+      $('hud-' + sid)?.classList.remove('empty');
+      if ($('nm-' + sid)) $('nm-' + sid).textContent = s.name;
+      if ($('tags-' + sid)) $('tags-' + sid).innerHTML = typeChips(s.types);
+      setHp(sid, c); pulse(box, 'enter', 500); sfx('switch'); return 480;
+    }
+    case 'detailschange': {
+      const sid = sidOf(a), s = sp(b.split(',')[0]);
+      if ($('spr-' + sid)) $('spr-' + sid).innerHTML = spriteHtml(s.id);
+      if ($('nm-' + sid)) $('nm-' + sid).textContent = s.name;
+      if ($('tags-' + sid)) $('tags-' + sid).innerHTML = typeChips(s.types);
+      return 0;
+    }
+    case 'move': {
+      const src = sidOf(a), mv = Dex.moves.get(b), tgt = sidOf(c) || src;
+      const color = TYPE_COLORS[mv.type] || '#fff';
+      fx.last = {color, tgt}; fx.eff = null;
+      if (p.includes('[still]')) return 150;
+      pulse($('spr-' + src), 'lunge', 400);
+      if (mv.category === 'Status' || tgt === src) { spawn('aura', color, center(src)); sfx('status'); return 450; }
+      if (mv.category === 'Special') {
+        const from = center(src), to = center(tgt), orb = spawn('orb', color, from);
+        if (orb && from && to && orb.animate) orb.animate([{transform: 'translate(-50%,-50%) scale(.6)'}, {transform: `translate(calc(-50% + ${to.x - from.x}px), calc(-50% + ${to.y - from.y}px)) scale(1.2)`}], {duration: 340, easing: 'ease-in', fill: 'forwards'});
+        sfx('special'); return 380;
+      }
+      sfx('physical'); return 300;
+    }
+    case '-supereffective': fx.eff = 'se'; return 0;
+    case '-resisted': fx.eff = 'nve'; return 0;
+    case '-crit': pulse($('arena'), 'critflash', 300); sfx('crit'); return 150;
+    case '-damage': {
+      const sid = sidOf(a); setHp(sid, b);
+      if (p.some(x => x.startsWith('[from]'))) { pulse($('spr-' + sid), 'hurt', 320); sfx('chip'); return 320; }
+      pulse($('spr-' + sid), 'hit', 420);
+      spawn('burst', fx.last?.color || '#fff', center(sid));
+      sfx(fx.eff === 'se' ? 'hitSE' : fx.eff === 'nve' ? 'hitNVE' : 'hit'); fx.eff = null;
+      return 440;
+    }
+    case '-heal': { const sid = sidOf(a); setHp(sid, b); pulse($('spr-' + sid), 'heal', 600); sfx('heal'); return 450; }
+    case 'faint': { const box = $('spr-' + sidOf(a)); box?.classList.add('faint'); sfx('faint'); return 700; }
+    case '-boost': pulse($('spr-' + sidOf(a)), 'up', 700); sfx('up'); return 450;
+    case '-unboost': pulse($('spr-' + sidOf(a)), 'down', 700); sfx('down'); return 450;
+    case '-status': {
+      const sid = sidOf(a), tags = $('tags-' + sid);
+      if (tags && !tags.querySelector('.status')) tags.insertAdjacentHTML('beforeend', `<span class="status">${esc(b)}</span>`);
+      pulse($('spr-' + sid), 'afflict', 600); sfx('statusHit'); return 450;
+    }
+    case '-curestatus': $('tags-' + sidOf(a))?.querySelector('.status')?.remove(); return 0;
+    case '-mega': pulse($('spr-' + sidOf(a)), 'mega', 1000); sfx('mega'); return 1000;
+    case '-terastallize': {
+      const box = $('spr-' + sidOf(a)); if (box) box.style.setProperty('--tc', TYPE_COLORS[b] || '#fff');
+      $('tags-' + sidOf(a))?.insertAdjacentHTML('beforeend', `<span class="chip" style="color:var(--gold)">Tera ${esc(b)}</span>`);
+      pulse(box, 'tera', 1000); sfx('tera'); return 1000;
+    }
+    case '-weather': { if (!p.includes('[upkeep]') && $('arena')) $('arena').dataset.weather = weatherKey(toID(a)); return 0; }
+    default: return 0;
+  }
+}
+
+// Original synthesized sound effects (Web Audio); no game audio is used
+const SFX = {ctx: null, muted: (() => { try { return localStorage.getItem('starter-draft-mute') === '1'; } catch { return false; } })()};
+function sfx(name) {
+  if (SFX.muted) return;
+  try {
+    SFX.ctx ||= new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = SFX.ctx; if (ctx.state === 'suspended') ctx.resume();
+    const t0 = ctx.currentTime;
+    const tone = (f1, f2, dur, type = 'sine', vol = .15, delay = 0) => {
+      const o = ctx.createOscillator(), g = ctx.createGain(), t = t0 + delay;
+      o.type = type; o.frequency.setValueAtTime(f1, t); o.frequency.exponentialRampToValueAtTime(Math.max(20, f2), t + dur);
+      g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+      o.connect(g).connect(ctx.destination); o.start(t); o.stop(t + dur + .02);
+    };
+    const noise = (dur, vol = .2, freq = 1200, delay = 0) => {
+      const len = Math.floor(ctx.sampleRate * dur), buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+      const src = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain(), t = t0 + delay;
+      f.type = 'lowpass'; f.frequency.value = freq; g.gain.value = vol;
+      src.buffer = buf; src.connect(f).connect(g).connect(ctx.destination); src.start(t);
+    };
+    ({
+      switch: () => { tone(320, 760, .12, 'square', .06); tone(760, 1100, .1, 'square', .05, .1); },
+      physical: () => noise(.09, .12, 2500),
+      special: () => tone(380, 1100, .3, 'sine', .12),
+      status: () => { tone(620, 900, .12, 'triangle', .1); tone(900, 1240, .12, 'triangle', .08, .11); },
+      hit: () => { noise(.14, .3, 1400); tone(170, 60, .14, 'square', .12); },
+      hitSE: () => { noise(.22, .4, 2200); tone(260, 55, .22, 'square', .16); tone(130, 40, .2, 'sawtooth', .1, .06); },
+      hitNVE: () => { noise(.08, .16, 700); tone(120, 70, .08, 'square', .06); },
+      chip: () => noise(.07, .12, 900),
+      crit: () => tone(1500, 2400, .08, 'square', .06),
+      heal: () => [660, 830, 990].forEach((f, i) => tone(f, f * 1.01, .18, 'sine', .08, i * .09)),
+      faint: () => tone(520, 70, .7, 'sawtooth', .1),
+      up: () => [440, 560, 700].forEach((f, i) => tone(f, f * 1.05, .1, 'triangle', .08, i * .07)),
+      down: () => [700, 560, 440].forEach((f, i) => tone(f, f * .95, .1, 'triangle', .08, i * .07)),
+      statusHit: () => { tone(300, 240, .25, 'sawtooth', .07); tone(310, 250, .25, 'sawtooth', .05, .02); },
+      mega: () => { tone(160, 1300, .8, 'sawtooth', .07); [1000, 1330, 1600].forEach((f, i) => tone(f, f, .25, 'sine', .07, .55 + i * .07)); },
+      tera: () => [1200, 1600, 2000, 2400, 1800].forEach((f, i) => tone(f, f * 1.02, .16, 'triangle', .06, i * .08)),
+    })[name]?.();
+  } catch {}
+}
+document.addEventListener('click', e => {
+  if (e.target.id !== 'mute') return;
+  SFX.muted = !SFX.muted;
+  try { localStorage.setItem('starter-draft-mute', SFX.muted ? '1' : '0'); } catch {}
+  e.target.setAttribute('aria-pressed', SFX.muted); e.target.textContent = SFX.muted ? 'Sound off' : 'Sound on';
+});
+
+function battleShell(viewer, controls, snap) {
   const keep = $log;
-  $app.innerHTML = `<section class="battle"><div class="stack"><div id="stage">${stageHtml(viewer)}</div><div class="controls" id="controls">${controls}</div></div><div class="log" id="log" aria-live="polite"></div></section>`;
+  $app.innerHTML = `<section class="battle"><div class="stack"><div id="stage">${stageHtml(viewer, snap)}</div><div class="controls" id="controls">${controls}</div></div><div class="log" id="log" aria-live="polite"></div></section>`;
   const fresh = document.getElementById('log');
-  if (keep) { fresh.replaceWith(keep); } else { $log = fresh; }
+  // Re-attaching the kept log resets its scroll, so jump back to the latest line
+  if (keep) { fresh.replaceWith(keep); keep.scrollTop = keep.scrollHeight; } else { $log = fresh; }
 }
 
 function controlsHtml(sid) {
@@ -908,8 +1145,18 @@ function controlsHtml(sid) {
   let html = `<div class="row" style="justify-content:space-between"><h3>${esc(S.players[sideIdx(sid)].name)}: ${req.forceSwitch ? 'choose a replacement' : 'what will you do?'}</h3></div>`;
   if (!req.forceSwitch && act) {
     html += `<div class="row">${act.canMegaEvo ? `<button class="toggle" id="t-mega" aria-pressed="false">Mega Evolve</button>` : ''}${act.canTerastallize ? `<button class="toggle" id="t-tera" aria-pressed="false">Terastallize (${esc(act.canTerastallize)})</button>` : ''}</div>`;
+    const foe = B[sid === 'p1' ? 'p2' : 'p1'].active[0];
+    const foeTypes = foe && !foe.fainted ? foe.getTypes() : null;
+    // Type-chart hint only: abilities like Levitate or Flash Fire aren't accounted for
+    const effNote = mv => {
+      if (!foeTypes || mv.category === 'Status') return '';
+      if (!Dex.getImmunity(mv.type, foeTypes)) return '<em class="eff none">No effect</em>';
+      const e = Dex.getEffectiveness(mv.type, foeTypes);
+      return e > 0 ? `<em class="eff se">Super effective${e > 1 ? ' ×4' : ''}</em>` : e < 0 ? `<em class="eff nve">Not very effective${e < -1 ? ' ×¼' : ''}</em>` : '';
+    };
     html += `<div class="moves">${act.moves.map((m, k) => { const mv = Dex.moves.get(m.id); const col = TYPE_COLORS[mv.type] || '#555';
-      return `<button class="move" data-move="${k + 1}" style="background:${col}" ${m.disabled ? 'disabled' : ''}><b>${esc(m.move)}</b><span>${esc(mv.type)} · ${mv.category === 'Status' ? 'Status' : (mv.basePower || '—') + ' BP'}${m.maxpp ? ` · ${m.pp}/${m.maxpp} PP` : ''}</span></button>`; }).join('')}</div>`;
+      const acc = mv.accuracy === true ? 'Never misses' : `${mv.accuracy}% acc`;
+      return `<button class="move" data-move="${k + 1}" style="background:${col}" ${m.disabled ? 'disabled' : ''}><b>${esc(m.move)}</b><span>${esc(mv.type)} · ${mv.category === 'Status' ? 'Status' : (mv.basePower || '—') + ' BP'} · ${acc}${m.maxpp ? ` · ${m.pp}/${m.maxpp} PP` : ''}</span>${effNote(mv)}</button>`; }).join('')}</div>`;
   }
   const trapped = !req.forceSwitch && act?.trapped;
   html += `<div class="eyebrow">${trapped ? 'Trapped — cannot switch' : 'Switch'}</div><div class="switches">${req.side.pokemon.map((p, k) => {
@@ -966,13 +1213,15 @@ async function playGame(teams) {
   B.setPlayer('p2', {name: S.players[1].name, team: Teams.pack(teams[1].map(toSet))});
   if (B.p1.activeRequest?.teamPreview) { B.choose('p1', 'default'); B.choose('p2', 'default'); }
   logIdx = 0; $log = null;
-  battleShell('p1', '');
+  const firstViewer = S.mode === 'online' ? (S.me === 0 ? 'p1' : 'p2') : 'p1';
+  battleShell(firstViewer, '', emptySnap());
   const head = document.createElement('div'); head.className = 't'; head.textContent = `Game ${S.game}`; $log.appendChild(head);
-  await revealLog();
+  await revealLog(firstViewer);
   let lastViewer = null;
   while (!B.ended) {
     const need = ['p1', 'p2'].filter(sid => { const r = B[sid].activeRequest; return r && !r.wait && !B[sid].isChoiceDone(); });
     if (!need.length) break;
+    const preTurn = takeSnap(); // the stage replays the turn starting from here
     const mySid = S.me === 0 ? 'p1' : 'p2';
     if (S.mode === 'online') need.sort(a => a === mySid ? -1 : 1);
     for (const sid of need) {
@@ -980,7 +1229,7 @@ async function playGame(teams) {
       if (S.mode === 'online') {
         if (sid === mySid) netSend('choice', await humanChoice(sid));
         else {
-          battleShell(mySid, `<p class="muted">Waiting for ${esc(S.players[sideIdx(sid)].name)} to choose…</p>`);
+          battleShell(mySid, `<p class="muted">Waiting for ${esc(S.players[sideIdx(sid)].name)} to choose…</p>`, preTurn);
           const str = await netWait('choice');
           if (!B.choose(sid, str)) console.error('Opponent choice rejected', str);
         }
@@ -995,8 +1244,9 @@ async function playGame(teams) {
       await humanChoice(sid);
     }
     const viewer = S.mode === 'cpu' ? 'p1' : S.mode === 'online' ? mySid : (lastViewer || 'p1');
-    battleShell(viewer, `<p class="muted">Resolving turn…</p>`);
-    await revealLog();
+    battleShell(viewer, `<p class="muted">Resolving turn…</p>`, preTurn);
+    await revealLog(viewer);
+    await sleep(250);
     document.getElementById('stage').innerHTML = stageHtml(viewer);
     if (S.mode === 'friend') lastViewer = null;
   }
