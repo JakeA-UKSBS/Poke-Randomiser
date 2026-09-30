@@ -171,6 +171,8 @@ select { background: var(--panel-2); border: 1px solid var(--line); border-radiu
 .err { color: var(--bad); font-size: 13px; min-height: 1em; }
 .netlost { background: var(--bad); color: #fff; padding: 8px 16px; font-weight: 600; text-align: center; }
 .roomcode { font-family: var(--font-display); font-size: clamp(34px, 9vw, 52px); color: var(--gold); letter-spacing: .12em; }
+.invite { background: var(--panel); border: 1px solid var(--gold); border-radius: 8px; padding: 10px 12px; }
+.invite b { color: var(--gold); font-family: var(--font-data); letter-spacing: .1em; }
 .online input { background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 9px 10px; }
 .strip { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: grid; gap: 8px; }
 .strip-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
@@ -321,6 +323,7 @@ const FORMATS = {
   standard: {label: 'Standard Bo3', short: 'STANDARD', blurb: 'Any fully evolved Pokémon with a competitive set.'},
   mega: {label: 'Mega Bo3', short: 'MEGA', blurb: 'Legendaries, Mythicals and Mega Evolutions only. Megas start already Mega Evolved, no stone needed.'},
 };
+const savedName = () => { try { return localStorage.getItem('starter-draft-name') || ''; } catch { return ''; } };
 function setup() {
   netClose();
   S = null; renderScore();
@@ -344,11 +347,12 @@ function setup() {
     <div class="row"><span class="seg" role="group" aria-label="Opponent">
       <button id="m-friend">Friend on this device</button><button id="m-online">Online friend</button><button id="m-cpu">Vs CPU</button></span></div></div>
     <div class="setup-grid">
-      <div class="field"><label for="n1" id="n1l">Player 1</label><input id="n1" value="Jake" maxlength="18"></div>
+      <div class="field"><label for="n1" id="n1l">Player 1</label><input id="n1" value="${esc(savedName())}" placeholder="Your name" maxlength="18"></div>
       <div class="field" id="n2f"><label for="n2">Player 2</label><input id="n2" value="Challenger" maxlength="18"></div>
     </div>
     <div class="row" id="localgo"><button class="btn" id="go">Start draft</button><span class="muted">Level 50, Gen 9 mechanics, Showdown's battle engine.</span></div>
     <div class="online stack" id="online" hidden>
+      ${roomParam ? `<p class="invite">You've been invited to room <b>${esc(roomParam)}</b>. Enter your name, then join.</p>` : ''}
       <div class="row"><button class="btn" id="host">Create a room</button><span class="muted">The room creator's game mode is used.</span></div>
       <div class="row"><div class="field" style="max-width:160px"><label for="code">Room code</label><input id="code" maxlength="5" autocomplete="off" value="${esc(roomParam)}" style="text-transform:uppercase;font-family:var(--font-data);letter-spacing:.15em"></div><button class="btn ghost" id="join" style="align-self:end">Join room</button></div>
       <div id="netstatus" class="stack" style="gap:8px"></div>
@@ -385,7 +389,16 @@ function setup() {
   const $st = document.getElementById('netstatus');
   const busy = on => { document.getElementById('host').disabled = on; document.getElementById('join').disabled = on; };
   const fail = e => { busy(false); netClose(); $st.innerHTML = `<p class="err">${esc(e.message)}</p>`; };
+  // Online players must name themselves; the name is remembered on this device
+  const onlineName = () => {
+    const el = document.getElementById('n1'), name = el.value.trim();
+    if (!name) { $st.innerHTML = '<p class="err">Enter your name first.</p>'; el.focus(); return null; }
+    try { localStorage.setItem('starter-draft-name', name); } catch {}
+    return name;
+  };
+  if (roomParam) document.getElementById('n1').focus();
   document.getElementById('host').onclick = async () => {
+    const name = onlineName(); if (!name) return;
     busy(true); $st.innerHTML = '<p class="muted">Creating room…</p>';
     const code = makeCode();
     try {
@@ -399,7 +412,6 @@ function setup() {
         };
       });
       netAttach(conn);
-      const name = document.getElementById('n1').value.trim() || 'Host';
       const seed = Array.from({length: 3}, () => Math.floor(Math.random() * 65536)).join(',');
       netSend('hello', {name, format, seed});
       const g = await netWait('hello');
@@ -407,13 +419,13 @@ function setup() {
     } catch (e) { fail(e); }
   };
   document.getElementById('join').onclick = async () => {
+    const name = onlineName(); if (!name) return;
     const code = document.getElementById('code').value.trim().toUpperCase();
     if (code.length !== 5) { $st.innerHTML = '<p class="err">Room codes are 5 characters.</p>'; return; }
     busy(true); $st.innerHTML = '<p class="muted">Joining room…</p>';
     try {
       const conn = await openRoom('guest', code, () => {});
       netAttach(conn);
-      const name = document.getElementById('n1').value.trim() || 'Guest';
       netSend('hello', {name});
       const h = await netWait('hello');
       startOnline(1, [h.name, h.name === name ? name + ' 2' : name], h.format, h.seed);
