@@ -1,6 +1,3 @@
-https://jakea-uksbs.github.io/Poke-Randomiser/
-
-
 # Poke-Randomiser
 
 A Pokémon draft battler for playing friends. Draft a team of random Pokémon, roll random abilities for them, build your sets, then fight a best-of-3.
