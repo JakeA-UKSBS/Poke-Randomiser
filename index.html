@@ -66,14 +66,14 @@ button:focus-visible, select:focus-visible, input:focus-visible, .card:focus-vis
 .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
 .step { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
 .step b { font-family: var(--font-data); color: var(--gold); display: block; font-size: 12px; margin-bottom: 4px; }
-/* Hero: text on the left, three Pokémon to the side; stacks on narrow screens */
-.hero { grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 28px; }
+/* Settings: game mode and opponent on the left, three Pokémon to the right; stacks on narrow screens */
+.settings-top { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 28px; row-gap: 14px; }
 .hero-text { display: grid; gap: 18px; min-width: 0; }
 .showcase { display: grid; grid-template-columns: repeat(3, 112px); gap: 4px; align-items: end; }
 .show:nth-child(2) { margin-bottom: 34px; }
 @media (max-width: 720px) {
-  .hero { grid-template-columns: 1fr; }
-  .showcase { grid-template-columns: repeat(3, minmax(0, 1fr)); max-width: 360px; }
+  .settings-top { grid-template-columns: 1fr; }
+  .showcase { grid-template-columns: repeat(3, minmax(0, 1fr)); max-width: 360px; order: -1; }
   .show:nth-child(2) { margin-bottom: 18px; }
 }
 .show { display: grid; place-items: center; position: relative; padding-bottom: 8px; animation: bob 2.2s ease-in-out infinite alternate; }
@@ -458,15 +458,19 @@ function setup() {
       <div class="step"><b>STEP 3</b>Set moves, items (one of each per team), Tera or Mega. Bring ${BRING} of your ${TEAM} to each game. Lose a game and you ban one of the winner's Pokémon.</div>
     </div></details>
     </div>
-    <div class="showcase" id="showcase" aria-hidden="true"></div>
   </section>
   <section class="stack" style="margin-top:20px">
+    <div class="settings-top">
+    <div class="stack" style="gap:14px">
     <div class="stack" style="gap:6px" id="modesec"><span class="eyebrow">Game mode</span>
       <div class="row"><span class="seg" role="group" aria-label="Game mode">${Object.entries(FORMATS).map(([k, f]) => `<button id="f-${k}" aria-pressed="${k === format}">${esc(f.label)}</button>`).join('')}</span></div>
       <p class="muted" id="fblurb"></p></div>
     <div class="stack" style="gap:6px" id="oppsec"><span class="eyebrow">Opponent</span>
     <div class="row"><span class="seg" role="group" aria-label="Opponent">
       <button id="m-online">Online friend</button><button id="m-friend">Friend on this device</button><button id="m-cpu">Vs CPU</button></span></div></div>
+    </div>
+    <div class="showcase" id="showcase" aria-hidden="true"></div>
+    </div>
     ${roomParam ? `<p class="invite">You've been invited to room <b>${esc(roomParam)}</b>. Enter your name, then join.</p>` : ''}
     <div class="setup-grid">
       <div class="field"><label for="n1" id="n1l">Player 1</label><input id="n1" value="${esc(savedName())}" placeholder="Your name" maxlength="18"></div>
@@ -503,7 +507,7 @@ function setup() {
   setMode(mode);
   // Invited players only need their name and the Join button
   if (roomParam) {
-    for (const id of ['herosec', 'modesec', 'oppsec', 'hostrow']) document.getElementById(id).hidden = true;
+    for (const id of ['herosec', 'modesec', 'oppsec', 'hostrow', 'showcase']) document.getElementById(id).hidden = true;
     document.getElementById('join').className = 'btn';
     document.getElementById('online').insertAdjacentHTML('beforeend', `<p class="muted" style="font-size:13px">Not joining a friend? <a href="${esc(location.pathname)}" style="color:var(--gold)">Start your own game</a></p>`);
   }
