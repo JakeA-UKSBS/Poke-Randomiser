@@ -66,11 +66,19 @@ button:focus-visible, select:focus-visible, input:focus-visible, .card:focus-vis
 .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
 .step { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
 .step b { font-family: var(--font-data); color: var(--gold); display: block; font-size: 12px; margin-bottom: 4px; }
-.showcase { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; max-width: 640px; }
-@media (max-width: 520px) { .showcase { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+/* Hero: text on the left, three Pokémon to the side; stacks on narrow screens */
+.hero { grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 28px; }
+.hero-text { display: grid; gap: 18px; min-width: 0; }
+.showcase { display: grid; grid-template-columns: repeat(3, 112px); gap: 4px; align-items: end; }
+.show:nth-child(2) { margin-bottom: 34px; }
+@media (max-width: 720px) {
+  .hero { grid-template-columns: 1fr; }
+  .showcase { grid-template-columns: repeat(3, minmax(0, 1fr)); max-width: 360px; }
+  .show:nth-child(2) { margin-bottom: 18px; }
+}
 .show { display: grid; place-items: center; position: relative; padding-bottom: 8px; animation: bob 2.2s ease-in-out infinite alternate; }
 .show::after { content: ''; position: absolute; bottom: 0; width: 64%; height: 12px; border-radius: 50%; background: radial-gradient(ellipse, rgba(0,0,0,.5), transparent 70%); }
-.show .sprite { width: 96px; height: 96px; max-width: 100%; }
+.show .sprite { width: 112px; height: 112px; max-width: 100%; }
 @keyframes bob { from { transform: translateY(0); } to { transform: translateY(-7px); } }
 .howto summary { cursor: pointer; display: inline-block; list-style: none; background: transparent; color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 8px 14px; font-weight: 600; }
 .howto summary::-webkit-details-marker { display: none; }
@@ -101,6 +109,23 @@ button.card { transition: transform .12s, border-color .12s; }
 .stats { display: grid; grid-template-columns: 34px 30px 1fr; gap: 2px 6px; font-family: var(--font-data); font-size: 11px; align-items: center; font-variant-numeric: tabular-nums; }
 .stats .bar { height: 6px; background: var(--panel-2); border-radius: 3px; overflow: hidden; }
 .stats .bar i { display: block; height: 100%; background: var(--muted); }
+.stats .bar i.hi { background: var(--good); }
+.stats .bar i.mid { background: var(--warn); }
+.stats .bar i.lo { background: var(--bad); }
+.stats .bar { height: 8px; }
+/* Pick cards */
+.picks { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); align-items: start; }
+.pickcard { padding: 0; gap: 0; overflow: hidden; }
+.pickcard.open { border-color: var(--gold); }
+.pick-main { background: transparent; border: 0; color: var(--fg); display: grid; justify-items: center; gap: 8px; padding: 18px 14px 14px; text-align: center; width: 100%; }
+.pick-main:hover { background: var(--panel-2); }
+.pick-main .sprite { width: 160px; height: 160px; max-width: 100%; }
+.pick-main .name { font-size: 22px; }
+.pick-main .types { justify-content: center; }
+.pick-main .type { font-size: 12px; padding: 3px 8px; }
+.pick-hint { font-size: 12px; color: var(--muted); }
+.pick-more { display: grid; gap: 12px; padding: 0 16px 16px; }
+.pick-more .stats { grid-template-columns: 36px 32px 1fr; font-size: 12.5px; gap: 5px 8px; }
 .abil { font-size: 13px; }
 .abil b { color: var(--gold); font-weight: 600; }
 .tag { font-family: var(--font-data); font-size: 11px; color: var(--gold); border: 1px solid var(--gold); padding: 1px 6px; border-radius: 3px; }
@@ -319,10 +344,12 @@ function spriteHtml(id, cls = 'sprite') {
   return `<div class="${cls} ph" aria-label="${esc(s.name)}">${esc(s.name.slice(0, 2))}</div>`;
 }
 const typeChips = types => `<div class="types">${types.map(t => `<span class="type" style="background:${TYPE_COLORS[t] || '#666'}">${esc(t)}</span>`).join('')}</div>`;
+// Bars: red below 50, yellow 50–100, green over 100
+const statTier = v => v > 100 ? 'hi' : v < 50 ? 'lo' : 'mid';
 function statBlock(id) {
   const b = sp(id).baseStats; const labels = {hp: 'HP', atk: 'Atk', def: 'Def', spa: 'SpA', spd: 'SpD', spe: 'Spe'};
   const bst = Object.values(b).reduce((a, c) => a + c, 0);
-  return `<div class="stats">${Object.entries(b).map(([k, v]) => `<span class="muted">${labels[k]}</span><span>${v}</span><span class="bar"><i style="width:${Math.min(100, v / 1.6)}%"></i></span>`).join('')}<span class="muted">BST</span><span>${bst}</span><span></span></div>`;
+  return `<div class="stats">${Object.entries(b).map(([k, v]) => `<span class="muted">${labels[k]}</span><span>${v}</span><span class="bar"><i class="${statTier(v)}" style="width:${Math.min(100, v / 1.6)}%"></i></span>`).join('')}<span class="muted">BST</span><span>${bst}</span><span></span></div>`;
 }
 const abilDesc = a => Dex.abilities.get(a).shortDesc || Dex.abilities.get(a).desc || '';
 
@@ -418,18 +445,20 @@ function setup() {
   netClose();
   S = null; renderScore();
   const roomParam = (new URLSearchParams(location.search).get('room') || '').toUpperCase();
-  let mode = roomParam ? 'online' : 'friend', format = 'standard';
+  let mode = 'online', format = 'standard';
   $app.innerHTML = `
   <section class="hero" id="herosec">
+    <div class="hero-text">
     <p class="eyebrow">Draft · Build · Best of 3</p>
     <h1>Draft ${TEAM} random Pokémon, <span>roll their abilities</span>, then battle.</h1>
-    <div class="showcase" id="showcase" aria-hidden="true"></div>
     <details class="howto"><summary>How to play</summary>
     <div class="steps">
       <div class="step"><b>STEP 1</b>${TEAM} rounds of picks, ${OPTIONS} random options each, from <span id="poolcount"></span> Pokémon.</div>
       <div class="step"><b>STEP 2</b>Every Pokémon you take rolls 3 random abilities from any Pokémon. Keep one. You get one reroll per draft.</div>
       <div class="step"><b>STEP 3</b>Set moves, items (one of each per team), Tera or Mega. Bring ${BRING} of your ${TEAM} to each game. Lose a game and you ban one of the winner's Pokémon.</div>
     </div></details>
+    </div>
+    <div class="showcase" id="showcase" aria-hidden="true"></div>
   </section>
   <section class="stack" style="margin-top:20px">
     <div class="stack" style="gap:6px" id="modesec"><span class="eyebrow">Game mode</span>
@@ -437,7 +466,7 @@ function setup() {
       <p class="muted" id="fblurb"></p></div>
     <div class="stack" style="gap:6px" id="oppsec"><span class="eyebrow">Opponent</span>
     <div class="row"><span class="seg" role="group" aria-label="Opponent">
-      <button id="m-friend">Friend on this device</button><button id="m-online">Online friend</button><button id="m-cpu">Vs CPU</button></span></div></div>
+      <button id="m-online">Online friend</button><button id="m-friend">Friend on this device</button><button id="m-cpu">Vs CPU</button></span></div></div>
     ${roomParam ? `<p class="invite">You've been invited to room <b>${esc(roomParam)}</b>. Enter your name, then join.</p>` : ''}
     <div class="setup-grid">
       <div class="field"><label for="n1" id="n1l">Player 1</label><input id="n1" value="${esc(savedName())}" placeholder="Your name" maxlength="18"></div>
@@ -456,7 +485,7 @@ function setup() {
     document.getElementById('fblurb').textContent = FORMATS[f].blurb;
     document.getElementById('poolcount').textContent = Object.keys(GROUP).length;
     // A few random Pokémon from this mode's pool, each with a random form
-    document.getElementById('showcase').innerHTML = shuffle(Object.keys(GROUP)).slice(0, 6)
+    document.getElementById('showcase').innerHTML = shuffle(Object.keys(GROUP)).slice(0, 3)
       .map((base, k) => `<div class="show" style="animation-delay:${-k * 0.37}s">${spriteHtml(rand(GROUP[base]))}</div>`).join('');
   };
   for (const k of Object.keys(FORMATS)) document.getElementById('f-' + k).onclick = () => setFormat(k);
@@ -547,9 +576,13 @@ function curtain(title, sub, btn = 'Ready') {
     document.getElementById('ok').onclick = res; document.getElementById('ok').focus();
   });
 }
-function monCard(id, extra = '', tag = 'button') {
+// Pick card: tap the Pokémon to open its stats, then confirm with Pick
+function monCard(id, extra = '') {
   const s = sp(id);
-  return `<${tag} class="card" data-id="${s.id}"><div class="top">${spriteHtml(id)}<div><div class="name">${esc(s.name)}</div>${typeChips(s.types)}</div></div>${statBlock(id)}${extra}</${tag}>`;
+  return `<div class="card pickcard" data-id="${s.id}">
+    <button class="pick-main" aria-expanded="false">${spriteHtml(id)}<div class="name">${esc(s.name)}</div>${typeChips(s.types)}${extra}<span class="pick-hint">Tap for stats</span></button>
+    <div class="pick-more" hidden>${statBlock(id)}<button class="btn pick-go">Pick ${esc(s.name)}</button></div>
+  </div>`;
 }
 function teamStrip(pl) {
   if (!pl || !pl.roster.length) return '';
@@ -561,7 +594,16 @@ function teamStrip(pl) {
 function choose(title, sub, ids, extraFn, pl) {
   return new Promise(res => {
     $app.innerHTML = `<section class="stack"><div><p class="eyebrow">${esc(sub)}</p><h2>${esc(title)}</h2></div><div class="picks">${ids.map(id => monCard(id, extraFn ? extraFn(id) : '')).join('')}</div>${teamStrip(pl)}</section>`;
-    $app.querySelectorAll('.picks .card').forEach(c => c.onclick = () => res(c.dataset.id));
+    $app.querySelectorAll('.pickcard').forEach(c => {
+      const main = c.querySelector('.pick-main'), more = c.querySelector('.pick-more');
+      main.onclick = () => {
+        const open = more.hidden;
+        more.hidden = !open; main.setAttribute('aria-expanded', open);
+        c.classList.toggle('open', open);
+        main.querySelector('.pick-hint').textContent = open ? 'Tap to hide stats' : 'Tap for stats';
+      };
+      c.querySelector('.pick-go').onclick = () => res(c.dataset.id);
+    });
   });
 }
 
@@ -629,9 +671,19 @@ function starterOptions() {
   }
   return pick.map(b => { const f = formsOf(b).filter(x => STARTERS.includes(x)); return f.includes(b) ? b : f[0]; });
 }
+// Standard mode: each option slot is a legendary/mythical with this chance (the pool alone would give ~18%)
+const LEGENDARY_RATE = 0.10;
 function draftOptions(owned) {
   const ownedBases = owned.map(baseOf);
-  return shuffle(Object.keys(GROUP).filter(b => !ownedBases.includes(b))).slice(0, OPTIONS).map(repOf);
+  const free = shuffle(Object.keys(GROUP).filter(b => !ownedBases.includes(b)));
+  if (S?.format !== 'standard') return free.slice(0, OPTIONS).map(repOf);
+  const leg = free.filter(b => GROUP[b].some(isLegendary)), non = free.filter(b => !GROUP[b].some(isLegendary));
+  const out = [];
+  for (let k = 0; k < OPTIONS; k++) {
+    const from = (Math.random() < LEGENDARY_RATE && leg.length) || !non.length ? leg : non;
+    if (from.length) out.push(from.pop());
+  }
+  return out.map(repOf);
 }
 // Megas drafted directly have no Random Battle set of their own: borrow the base form's moves, never a stone
 const mpool = id => { const m = movepool(sp(id).isMega ? baseOf(id) : id); return m.length ? m : learnset(id); };
